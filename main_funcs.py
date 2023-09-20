@@ -26,12 +26,16 @@ class analysis:
             self.recordingListPath = "/Users/Huriye/Documents/Code/clapfcstimulation/"
             self.rawPath           = "Z:\\Data\\"
             self.rootPath          = "/Users/Huriye/Documents/Code/clapfcstimulation/"
-        elif platform.platform() == 'Windows-10-10.0.19045-SP0':
+        elif platform.platform() == 'Windows-10-10.0.19041-SP0':
             print("Computer: Huriye Windows")
             # for Windows - Huriye PC
             self.recordingListPath = "C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\"
             self.rawPath           = "Z:\\Data\\"
             self.rootPath          = "C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\"
+        else:
+            print("Problem detected")
+            print(platform.platform())
+
         self.analysisPath =  os.path.join(self.rootPath, 'analysis')
         self.figsPath     =  os.path.join(self.rootPath, 'figs')
         self.DLCconfigPath = os.path.join(self.rootPath, 'pupilExtraction', 'Updated 5 Dot Training Model-Eren CAN-2021-11-21')

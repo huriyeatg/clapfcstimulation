@@ -381,7 +381,6 @@ recordingDate,animalID,recordingID,x-coordinate,y-coordinate,z-coordinate,blockT
 2023-08-26,2306,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-08-26,2307,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-08-26,2308,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-08-26,2309,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-08-26,2310,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-08-26,2311,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-08-26,2312,1,nan,nan,nan,{'training'},0,0,0,0,5
@@ -433,27 +432,27 @@ recordingDate,animalID,recordingID,x-coordinate,y-coordinate,z-coordinate,blockT
 2023-09-02,2310,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-09-02,2311,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-09-02,2312,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2303,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2304,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2306,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2307,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2308,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2309,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2310,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2311,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2312,1,nan,nan,nan,{'training'},0,0,0,0,5
-2023-09-03,2306,1,-161.98,-1460.64,162.8,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2306,2,-370.16,-1545.28,271.8,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2306,3,-28.58,-1689.63,60.8,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2306,4,-172.93,-2082.66,188.1,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2306,5,-33.19,-2204.46,244.3,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2306,6,-992.34,-1878.13,177.53,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,1,-70.35,-106.87,108.55,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,2,-44.78,-693.8,226.68,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,3,-57.17,-1833.66,156.3,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,4,-150.7,-157.85,177.1,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,5,-169.92,-861.33,233.73,{block3 (PAQ + pupil)},1,1,0,1,8
-2023-09-03,2307,6,-123.39,-156.1,215.48,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2303,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2304,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2306,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2307,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2308,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2309,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2310,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2311,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2312,1,nan,nan,nan,{'training'},0,0,0,0,5
+2023-09-04,2306,1,-161.98,-1460.64,162.8,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2306,2,-370.16,-1545.28,271.8,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2306,3,-28.58,-1689.63,60.8,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2306,4,-172.93,-2082.66,188.1,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2306,5,-33.19,-2204.46,244.3,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2306,6,-992.34,-1878.13,177.53,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,1,-70.35,-106.87,108.55,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,2,-44.78,-693.8,226.68,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,3,-57.17,-1833.66,156.3,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,4,-150.7,-157.85,177.1,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,5,-169.92,-861.33,233.73,{block3 (PAQ + pupil)},1,1,0,1,8
+2023-09-04,2307,6,-123.39,-156.1,215.48,{block3 (PAQ + pupil)},1,1,0,1,8
 2023-09-05,2308,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-09-05,2309,1,nan,nan,nan,{'training'},0,0,0,0,5
 2023-09-05,2308,1,-239.63,-1199.26,242.25,{block3 (PAQ + pupil)},1,1,0,1,8
@@ -498,7 +497,7 @@ recordingDate,animalID,recordingID,x-coordinate,y-coordinate,z-coordinate,blockT
 2023-09-06,2312,6,-1177.03,130.69,170.38,{block3 (PAQ + pupil)},1,1,0,1,8
 2023-09-07,2303,1,nan,nan,nan,{'simulation behaviour cue'},0,1,0,0,4
 2023-09-07,2303,2,nan,nan,nan,{'simulation behaviour reward'},0,0,0,0,3
-2023-09-07,2308,1,nan,nan,nan,{'simulation behaviour cue'},0,1,0,0,4
+2023-09-07,2308,1,nan,nan,nan,{'simulation behaviour cue'},0,0,0,0,4
 2023-09-07,2308,2,nan,nan,nan,{'simulation behaviour reward'},0,1,0,0,3
 2023-09-07,2310,1,nan,nan,nan,{'simulation behaviour cue'},0,1,0,0,4
 2023-09-07,2310,2,nan,nan,nan,{'simulation behaviour reward'},0,1,0,0,3
