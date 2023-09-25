@@ -13,7 +13,9 @@ for ind, recordingDate in enumerate(info.recordingList.recordingDate):
             filepathname = (info.recordingList.filepathname[ind] +'_p-' + 
                             format(int(info.recordingList.recordingID[ind]), '03d') )
             videofilename  = [f for f in glob.glob(filepathname + "\\*.avi")]
-            print('Pupil size extraction from video:' + filepathname)
-            deeplabcut.analyze_videos(path_config_file, videofilename, videotype='.avi',save_as_csv=True)
+            filenameCSV  = [f for f in glob.glob(filepathname + "\\*.csv")]
+            if len(filenameCSV)!=1:
+                print('Pupil size extraction from video:' + filepathname)
+                deeplabcut.analyze_videos(path_config_file, videofilename, videotype='.avi',save_as_csv=True)
         except:
             print(str(ind) + ': Failed')
