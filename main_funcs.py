@@ -98,8 +98,8 @@ def calculateDFF (tiff_folderpath, frameClockfromPAQ):
     flu_raw_subtracted, spks, stat = utils.s2p_loader(s2p_path)
     flu = utils.dfof2(flu_raw_subtracted)
 
-    _, n_frames = tiff_metadata(tiff_folderpath)
-    tseries_lens = n_frames
+   # _, n_frames = tiff_metadata(tiff_folderpath)
+    tseries_lens = [len(flu)] #n_frames
 
     # deal with the extra frames 
     frameClockfromPAQ = frameClockfromPAQ[:tseries_lens[0]] # get rid of foxy bonus frames
@@ -110,10 +110,10 @@ def calculateDFF (tiff_folderpath, frameClockfromPAQ):
 
     if len(paqio_frames) == sum(tseries_lens):
         print('Dff extraction is completed: ' +tiff_folderpath)
-        imagingDataQaulity = True
+        imagingDataQuality = True
        # print('All tseries chunks found in frame clock')
     else:
-        imagingDataQaulity = False
+        imagingDataQuality = False
         print('WARNING: Could not find all tseries chunks in '
               'frame clock, check this')
         print('Total number of frames detected in clock is {}'
@@ -131,10 +131,10 @@ def calculateDFF (tiff_folderpath, frameClockfromPAQ):
         except ValueError:
             print('Missing chunk cannot be attributed to a single '
                    'tseries')
-    return {"imagingDataQaulity": imagingDataQaulity,
+    return {"imagingDataQuality": imagingDataQuality,
             "frame-clock": frameClockfromPAQ,
             "paqio_frames":paqio_frames,
-            "n_frames":n_frames,
+            "n_frames":tseries_lens,
             "flu": flu,
             "spks": spks,
             "stat": stat,
