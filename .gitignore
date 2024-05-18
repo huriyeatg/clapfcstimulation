@@ -1,2 +1,8 @@
 
 analysis/
+
+stimuli_onePhotonStimulation/
+
+figs/
+
+__pycache__/

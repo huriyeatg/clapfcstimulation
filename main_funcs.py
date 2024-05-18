@@ -13,6 +13,7 @@ import pickle
 from statsmodels.stats.multitest import fdrcorrection
 from scipy.stats import entropy
 from scipy import stats
+from sklearn.feature_selection import mutual_info_classif
 from sklearn.metrics import mutual_info_score
 from sklearn.preprocessing import KBinsDiscretizer
 if os.environ['CONDA_DEFAULT_ENV'] == 'clapfcstimulation':
@@ -59,7 +60,58 @@ class analysis:
                                 str(self.recordingList.animalID[ind]) + '_' + 
                                 format(int(self.recordingList.recordingID[ind]), '03d'))   
             self.recordingList.loc[ind,'analysispathname'] = analysispathname +'\\' 
-                    
+
+def update_dff_traces(dff_traces, new_data, key, shape):
+    """Update dF/F trace arrays with new data or placeholder NaN arrays."""
+    if key in new_data:
+        new_trace = new_data[key]
+    else:
+        new_trace = np.full(shape, np.nan)  # Placeholder for missing data
+    
+    return np.vstack((dff_traces, new_trace)) if dff_traces is not None else new_trace
+
+def update_pupil_traces(extData, len_cellID, indPupil, pupilID, pupil_traceBoth, pupil_traceVis, pupil_traceOpto):
+    """Organizes pupil traces from extData based on quality and recording order.
+    
+    Args:
+        extData (dict): Extracted data containing pupil traces and quality.
+        len_cellID (int): The number of cells in the current recording.
+        indPupil (int): Indicator if it's the first recording (0) or subsequent ones (1+).
+        pupilID (list): List to extend with pupil trace IDs based on quality.
+        pupil_traceBoth, pupil_traceVis, pupil_traceOpto (np.ndarray): Existing pupil trace arrays to update.
+        
+    Returns:
+        tuple: Updated indPupil, pupilID, pupil_traceBoth, pupil_traceVis, pupil_traceOpto.
+    """
+    pupil_trace = extData[17]
+    pupilQuality = extData[18]
+    trace_shapes = (len_cellID, 240)  # Assuming fixed shape for simplicity
+
+    def get_or_fake(trace_key):
+        if trace_key in pupil_trace and pupilQuality > 0.75:
+            return np.tile(pupil_trace[trace_key], (len_cellID, 1))
+        return np.full(trace_shapes, np.nan)
+
+    if indPupil == 0 and (len(pupil_trace) > 0) & (pupilQuality > 0.75):
+        indPupil = 1  # Update for subsequent recordings
+    pupilID.extend([int((len(pupil_trace) > 0) & (pupilQuality > 0.75))] * len_cellID)
+
+    # Fetch or fake traces
+    new_traceBoth = get_or_fake('Both')
+    new_traceVis = get_or_fake('onlyVis')
+    new_traceOpto = get_or_fake('onlyOpto')
+
+    # Update existing traces or set new ones
+    pupil_traceBoth = new_traceBoth if indPupil == 0 else np.vstack((pupil_traceBoth, new_traceBoth))
+    pupil_traceVis = new_traceVis if indPupil == 0 else np.vstack((pupil_traceVis, new_traceVis))
+    pupil_traceOpto = new_traceOpto if indPupil == 0 else np.vstack((pupil_traceOpto, new_traceOpto))
+
+    return indPupil, pupilID, pupil_traceBoth, pupil_traceVis, pupil_traceOpto
+
+def normalize_to_baseline(dff_trace, pre_frames):
+    ac = np.mean(dff_trace[:, :pre_frames], axis=1, keepdims=True)
+    return dff_trace - ac
+
 def convert_tiff2avi (imagename, outputsavename, fps=30.0):
     # path = 'Z:\Data\\2022-05-09\\2022-05-09_22107_p-001\\'
     # filename = path + 'test.tif'
@@ -227,20 +279,18 @@ def getIndexForInterestedcellsID ( s_recDate, s_animalID, s_recID, s_cellID ):
 def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = False, pupil = True ):
     infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'    
     animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto, dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath) 
-    
+    animalID = np.where(animalID == 23040, 2304, animalID) # typo in animal ID
+    #animalID = np.where(animalID == 22104, 22105, animalID) # typo in animal ID ( 22104 & 22105 is same animal)
     infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForPlotting_normalisedtoPre.pkl'
     dff_traceBoth, dff_traceVis, dff_traceOpto = pd.read_pickle(infoPath) 
-
-    Chrimson_animals = [21104, 21107, 21108, 21109,22101,22102,22103,22104,22105,22106,22107,22108, 2303, 2304]
+    Chrimson_animals = [ 21104, 21107, 21108, 21109,22101,22102,22103,22105,22106,22107,22108, 2303, 2304]
     NAAP_animals    = [21101, 21102, 21103, 21105, 21106]  
     control_animals = [23040, 23036, 23037]
-    OPN_animals     = [2306, 2307,2308,2309,2310, 2311, 2312]
+    OPN_animals     = [2306, 2307,2308,2309,2310, 2311]
     if stimType == 'Trained':
         # exclude 22102 and 22108 as they did not learn
-        Chrimson_animals = [21104, 21107, 21108, 21109,22101,22103,22104,22105,22106,22107, 2303, 2304]
-        OPN_animals      = [2306, 2307,2308,2309,2310, 2311, 2312]
-
-    
+        Chrimson_animals = [22101,22102, 22103,22105,22106,22107, 2303, 2304]
+        OPN_animals      = [2306, 2307,2308,2309,2310, 2311] # 2312
 
     if aGroup == 'Chrimson':
         s = set(Chrimson_animals)
@@ -255,7 +305,8 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         s = set(OPN_animals)
         selectedAnimals = np.array([i in s for i in animalID])
     else:
-        print('Please select a group from the list above')
+        s =set([aGroup])
+        selectedAnimals = np.array([i in s for i in animalID])
 
     # exclude trained stimuli
     if stimType == 'Trained':
@@ -276,9 +327,8 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         selectedFamilarity = np.array([i in s for i in stimuliFamilarity])
     else:
         print(stimType + ' is not defined')
-    
 
-        # select only pupil
+    # select only pupil
     if pupil:
         includeType = [1]
         s = set(includeType)
@@ -287,38 +337,22 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         includeType = [0, 1]
         s = set(includeType)
         selectedPupil = np.array([i in s for i in pupilID])
+    
+    selectedExpGroup = selectedAnimals & selectedFamilarity & selectedPupil 
 
-    # exclude not good quality data - There are some wierd data in early recordings
-    selectedQuality = (np.nanmin(dff_traceOpto[:,87:90], axis=1)>-0.85) & (np.nanmax(dff_traceOpto[:, 87:90], axis=1)<0.85)
-
-    # # only 88 cells are excluded from 90221 cells
-    # # they statistically not problem, but visuallly makes sense to exclude them
-    # includeType =[0, 1] 
-    # s = set(includeType)
-    # selectedQuality = np.array([i in s for i in dataQuality])
-
-    selectedExpGroup = selectedAnimals & selectedFamilarity & selectedPupil & selectedQuality
-
-    # Exclude non responsive units
-
-    #p_fdr = 0.0001 # USe the code to define these values
-    #p_standard = 0.05
-    #responsiveOpto = (np.array(pvalsOpto) <= p_fdr)
-    #responsiveNoOpto  = (np.array(pvalsOpto) > p_standard)
     if responsive==False:
         selectedCellIndex = selectedExpGroup
     else:
 
-        temp = fdrcorrection(pvalsVis, alpha=0.05/3, method='n', is_sorted=False)
+        temp = fdrcorrection(pvalsVis, alpha=0.05, method='n', is_sorted=False)
         responsiveVis  = temp[0]
         responsiveNoVis  = ~responsiveVis
-
     
-        temp = fdrcorrection(pvalsOpto, alpha=0.05/3, method='n', is_sorted=False)
+        temp = fdrcorrection(pvalsOpto, alpha=0.05, method='n', is_sorted=False)
         responsiveOpto = temp[0]
         responsiveNoOpto = ~responsiveOpto
         
-        temp = fdrcorrection(pvalsBoth, alpha=0.05/3, method='n', is_sorted=False)
+        temp = fdrcorrection(pvalsBoth, alpha=0.05, method='n', is_sorted=False)
         responsiveBoth = temp[0]
         responsiveNoBoth  = ~responsiveBoth
 
@@ -333,82 +367,108 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         responsiveAll = responsiveVis | responsiveOpto | responsiveBoth
         nonResponsiveAll = responsiveNoVis | responsiveNoOpto | responsiveNoBoth
 
-        responsiveOnlyVis   = responsiveVis #& responsiveNoOpto
-        responsiveOnlyOpto   = responsiveOpto #& responsiveNoVis
+        responsiveOnlyVis   = responsiveVis & responsiveNoOpto & responsiveNoBoth
+        responsiveOnlyOpto   = responsiveOpto & responsiveNoVis & responsiveNoBoth
         responsiveOnlyBoth  = responsiveBoth & responsiveNoVis & responsiveNoOpto
 
         if plotValues:
             print('All cell number:'+ str(np.sum(selectedExpGroup)))
-            # All responsive cells
+            # # All responsive cells
             responsiveAll = responsiveVis | responsiveOpto | responsiveBoth
             print('Any responsive cell number:'+ str(np.sum(responsiveAll)))
+            VisOptoNoBoth = responsiveVis & responsiveOpto & responsiveNoBoth
+            print('Responsice to  visual and opto but not both cell number:'+ str(np.sum(VisOptoNoBoth)))
 
             # visual cue responsive cells
             excDff = (np.array(dff_meanVisValue)> 0)
             inhDff = (np.array(dff_meanVisValue)<0)
-            excOnly = excDff & responsiveOnlyVis
-            inhOnly = inhDff & responsiveOnlyVis
+            excOnlyV = excDff & responsiveVis
+            inhOnlyV = inhDff & responsiveVis
+            
             print('Visual cue - all visual responsive cells: '+ str(np.sum(responsiveVis)))
             print('Visual cue - only visual responsive: '+ str(np.sum(responsiveOnlyVis)))
-            print('Visual only cue - EXC opto responsive: '+ str(np.sum(excOnly)/np.sum(responsiveOnlyVis)))
-            print('Visual only cue - INH opto responsive: '+ str(np.sum(inhOnly)/np.sum(responsiveOnlyVis)))
+            print('Visual only cue - EXC opto responsive: '+ str(np.sum(excOnlyV)/np.sum(responsiveVis)))
+            print('Visual only cue - INH opto responsive: '+ str(np.sum(inhOnlyV)/np.sum(responsiveVis)))
 
             # opto cue responsive cells
             excDff = (np.array(dff_meanBothValue) > 0)
             inhDff = (np.array(dff_meanBothValue) < 0)
-            excOnly = excDff & responsiveOnlyOpto
-            inhOnly = inhDff & responsiveOnlyOpto
+            excOnlyO = excDff & responsiveOpto
+            inhOnlyO = inhDff & responsiveOpto
             print('Opto stimulation - all opto responsive cells: '+ str(np.sum(responsiveOpto)))
             print('Opto stimulation - only opto responsive: '+ str(np.sum(responsiveOnlyOpto)))
-            print('Opto stimulation - EXC opto responsive: '+ str(np.sum(excOnly)/np.sum(responsiveOnlyOpto)))
-            print('Opto stimulation - INH opto responsive: '+ str(np.sum(inhOnly)/np.sum(responsiveOnlyOpto)))
+            print('Opto stimulation - EXC opto responsive: '+ str(np.sum(excOnlyO)/np.sum(responsiveOpto)))
+            print('Opto stimulation - INH opto responsive: '+ str(np.sum(inhOnlyO)/np.sum(responsiveOpto)))
 
             # Both cue responsive cells
            
             responsiveOnlyBoth  = responsiveBoth & responsiveNoVis & responsiveNoOpto   
             excDff = (np.array(dff_meanBothValue) > 0)
             inhDff = (np.array(dff_meanBothValue) < 0)
-            excOnly = excDff & responsiveOnlyBoth
-            inhOnly = inhDff & responsiveOnlyBoth
+            excOnlyB = excDff & responsiveOnlyBoth
+            inhOnlyB = inhDff & responsiveOnlyBoth
             print('Both - all both responsive cells:'+ str(np.sum(responsiveBoth)))
             print('Both - only both responsive: '+ str(np.sum(responsiveOnlyBoth)))
-            print('Both - EXC opto responsive: '+ str(np.sum(excOnly)/np.sum(responsiveOnlyBoth)))
-            print('Both - INH opto responsive: '+ str(np.sum(inhOnly)/np.sum(responsiveOnlyBoth)))
+            print('Both - EXC opto responsive: '+ str(np.sum(excOnlyB)/np.sum(responsiveOnlyBoth)))
+            print('Both - INH opto responsive: '+ str(np.sum(inhOnlyB)/np.sum(responsiveOnlyBoth)))
 
-            # # Sensory responsive cells
-            # responsiveSensory  = responsiveVis | responsiveBoth
-            # responsiveSensory  = responsiveSensory & ~responsiveOnlyOpto
-            # print('Sensory responsive cell number:'+ str(np.sum(responsiveSensory)))
-            # excDff = (np.array(dff_meanBothValue) > 0)
-            # inhDff = (np.array(dff_meanBothValue) < 0)
-            # excOnly = excDff & responsiveSensory
-            # inhOnly = inhDff & responsiveSensory
-            # print('responsiveSensory - EXC opto responsive: '+ str(np.sum(excOnly)/np.sum(responsiveSensory)))
-            # print('responsiveSensory - INH opto responsive: '+ str(np.sum(inhOnly)/np.sum(responsiveSensory)))
+        else:
+            # visual cue responsive cells
+            excDff = (np.array(dff_meanVisValue)> 0)
+            inhDff = (np.array(dff_meanVisValue)<0)
+            excOnlyV = excDff & responsiveVis
+            inhOnlyV = inhDff & responsiveVis
+            # opto cue responsive cells
+            excDff = (np.array(dff_meanBothValue) > 0)
+            inhDff = (np.array(dff_meanBothValue) < 0)
+            # Both cue responsive cells
+            excOnlyO = excDff & responsiveOpto
+            inhOnlyO = inhDff & responsiveOpto
+            responsiveOnlyBoth  = responsiveBoth & responsiveNoVis & responsiveNoOpto   
+            excDff = (np.array(dff_meanBothValue) > 0)
+            inhDff = (np.array(dff_meanBothValue) < 0)
+            excOnlyB = excDff & responsiveOnlyBoth
+            inhOnlyB = inhDff & responsiveOnlyBoth
 
-            # responsiveNoSensory  = responsiveOnlyOpto #responsiveOpto & responsiveNoVis & responsiveNoBoth
-            # print('NO sensory responsive cell number:'+ str(np.sum(responsiveNoSensory)))
-            # excDff = (np.array(dff_meanBothValue) > 0)
-            # inhDff = (np.array(dff_meanBothValue) < 0)
-            # excOnly = excDff & responsiveNoSensory
-            # inhOnly = inhDff & responsiveNoSensory
-            # print('responsiveNoSensory - EXC opto responsive: '+ str(np.sum(excOnly)/np.sum(responsiveNoSensory)))
-            # print('responsiveNoSensory - INH opto responsive: '+ str(np.sum(inhOnly)/np.sum(responsiveNoSensory)))
-    
-    if responsive =='Visual':
-        selectedCellIndex = responsiveOnlyVis
+    if responsive =='Sensory':
+        selectedCellIndex = responsiveVis
+        excOnly = excOnlyV
+        inhOnly = inhOnlyV
+        
     elif responsive =='Opto':
-        selectedCellIndex = responsiveOnlyOpto
-    elif responsive =='Both':
+        selectedCellIndex = responsiveOpto
+        excOnly = excOnlyO
+        inhOnly = inhOnlyO
+
+    elif responsive =='Opto-boosted':
         selectedCellIndex = responsiveOnlyBoth
+        excOnly = excOnlyB
+        inhOnly = inhOnlyB
+
     elif responsive =='All':
         selectedCellIndex = responsiveAll
+        excOnly = responsiveAll
+        inhOnly = responsiveAll
+
     elif responsive=='None':
         selectedCellIndex = nonResponsiveAll
+        excOnly = nonResponsiveAll
+        inhOnly = nonResponsiveAll
     else:
-        selectedCellIndex = 'List above'
+        selectedCellIndex = 'Select responsive type'
 
-    return selectedCellIndex
+    if plotValues:
+            output = {
+                "All": np.sum(selectedExpGroup),
+                "Any responsive": np.sum(responsiveAll)*100/np.sum(selectedExpGroup),
+                "all": np.sum(selectedCellIndex)*100/np.sum(selectedExpGroup),
+                "only": np.sum(selectedCellIndex),
+                "EXC": np.sum(excOnly)*100/np.sum(selectedCellIndex),
+                "INH": np.sum(inhOnly)*100/np.sum(selectedCellIndex),
+            }
+            return output, selectedCellIndex
+    else:
+        return selectedCellIndex
 
 def norm_to_zero_one(row):
     min_val = np.nanmin(row)
@@ -441,6 +501,18 @@ def calculate_SNR(flu, pre_frames, post_frames):
         vars_.append(snr)
     return np.array(vars_)
 
+# Function to calculate absolute magnitude
+def calculate_absMagnitude(flu, pre_frames, post_frames):
+    # Flu is Cell x Time x Trial 
+    vars_ = []
+    for t in range(flu.shape[0]):
+        trial = flu[t, :, :]
+        magnitudeCalc = np.abs(np.nanmean(np.nanmean(trial[post_frames,:], axis=1) - np.nanmean(trial[pre_frames,:], axis = 1)))
+        std_noise   = np.nanstd(trial[pre_frames,:]) #np.mean(trial[pre_frames,:], axis = 1)
+        magnitude = np.where(std_noise != 0, magnitudeCalc, np.inf) # This line of code does nothing, but it is here to keep the same structure as the other functions
+        vars_.append(magnitude)
+    return np.array(vars_)
+
 # Function to calculate Coefficient of Variation (CV)
 def calculate_CV(signal):
     # Assuming isis is a list/array of inter-spike intervals for a given neuron
@@ -451,7 +523,7 @@ def calculate_CV(signal):
     return cv
 
 # Function to calculate mutual information
-def calculate_mutual_information(flu, pre_frames, post_frames):
+def calculate_MI(flu, pre_frames, post_frames):
     # Calculate Mutual Information
     # Assuming stimulus_conditions is a list/array of different stimulus conditions (e.g., visual cues),
     # and neural_responses is a list/array of the corresponding neural responses
@@ -460,29 +532,52 @@ def calculate_mutual_information(flu, pre_frames, post_frames):
     vars_ = []
     for t in range(flu.shape[0]):
         trial = flu[t, :, :]
-        response_post  = np.nanmedian(trial[post_frames,:], axis = 0)
-        response_pre   = np.nanmedian(trial[pre_frames,:], axis = 0)
+        response_post  = np.nanmean(trial[post_frames,:], axis = 0)
+        response_pre   = np.nanmean(trial[pre_frames,:], axis = 0)
 
         # Use the custom calculate_SNR function
         num_trials = response_pre.shape[0]
         stimuli = np.concatenate([
-                    np.zeros(num_trials),  # Labels for visual condition
+                    np.ones(num_trials)*2,  # Labels for visual condition
                     np.ones(num_trials),   # Labels for pre-visual (no) condition
                 ])
         responses = np.concatenate([response_post, response_pre])
-        vars_     = mutual_info_score(stimuli, responses)
-    #stats.zscore(np.log(np.array(vars_)))
-    return np.array(vars_)
+        mi_value     = mutual_info_score(responses, stimuli)
+        mi_value     = mi_value.ravel()
+        vars_.append(mi_value)
+    vars_ = np.array(vars_)
+    vars_ = vars_.flatten()
+    return vars_
 
 def variance_cell_rates(flu, frames):
-# Flu is Cell x Time x Trial - From Jimmy's code
-    vars_ = []
+    # Flu is Cell x Time x Trial - From Jimmy's code
+    # vars_ = []
+    # for t in range(flu.shape[0]):
+    #     trial = flu[t, :, :]
+    #     trial = trial[frames,:]
+    #     vars_.append(np.var(np.nanmean(trial, axis=1)))
+    
+    # return np.array(np.array(vars_))
+    # Flu is Cell x Time x Trial
+    covs_ = []  # List to hold the coefficient of variation for each trial
     for t in range(flu.shape[0]):
         trial = flu[t, :, :]
-        trial = trial[frames,:]
-        vars_.append(np.var(np.nanmean(trial, axis=1)))
-    
-    return np.array(np.log(np.array(vars_)))
+        trial = trial[frames, :]  # Assuming 'frames' is an index or slice for the desired time frame
+        
+        # Calculate the mean and standard deviation across trials for each time point
+        mean_trial = np.abs(np.nanmean(trial, axis=1))
+        std_trial = np.abs(np.nanstd(trial, axis=1))
+        
+        # Calculate the CoV for each time point and then take the mean CoV across all time points
+        # Make sure to handle the case where the mean is zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            cov_trial = np.where(mean_trial != 0, std_trial / mean_trial, 0)
+        
+        # The CoV for the trial is the mean of the CoVs across time points
+        covs_.append(np.nanmean(cov_trial))
+
+    # Return an array of the mean coefficient of variation for each trial
+    return np.array(covs_)
 
 def mean_cross_correlation(flu, frames):
 
@@ -515,6 +610,8 @@ def mean_cross_correlation(flu, frames):
 
     return np.array(trial_corr)
 
+
+## END
 # def run_suite2p (self, data_path, filename): # Not tested - 05/03/2022 HA
 #     from suite2p.run_s2p import run_s2p
 #     ops = {

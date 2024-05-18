@@ -118,7 +118,6 @@ def s2p_loader(s2p_path, subtract_neuropil=True, neuropil_coeff=0.7):
         neuropil_corrected = all_cells - neuropil * neuropil_coeff
         return neuropil_corrected, spks, stat
 
-
 def correct_s2p_combined(s2p_path, n_planes):
 
     len_count = 0
@@ -142,7 +141,6 @@ def correct_s2p_combined(s2p_path, n_planes):
 
     np.save(combined_iscell, allcells)
 
-
 def read_fiji(csv_path):
     '''reads the csv file saved through plot z axis profile in fiji'''
 
@@ -157,7 +155,6 @@ def read_fiji(csv_path):
 
     return np.array(data)
 
-
 # def save_fiji(arr):  # commented out by Thijs for compatibility
 #     '''saves numpy array in current folder as fiji friendly tiff'''
 #     tf.imsave('Vape_array.tiff', arr.astype('int16'))
@@ -170,11 +167,17 @@ def clean_traces(signalMain):
 
     return np.array(signalMain)
 
-def threshold_detect(signal, threshold):
-    '''lloyd russell'''
-    thresh_signal = signal > threshold
-    thresh_signal[1:][thresh_signal[:-1] & thresh_signal[1:]] = False
-    times = np.where(thresh_signal)
+def threshold_detect(signal, threshold, cutoff=True):
+    '''lloyd russell, cutoff is added by HA'''
+    if cutoff:
+        thresh_signal = (signal > threshold) & (signal < cutoff)
+        thresh_signal[1:][thresh_signal[:-1] & thresh_signal[1:]] = False
+        times = np.where(thresh_signal)
+    else:
+        thresh_signal = signal > threshold
+        thresh_signal[1:][thresh_signal[:-1] & thresh_signal[1:]] = False
+        times = np.where(thresh_signal)
+
     return times[0]
 
 def pade_approx_norminv(p):
@@ -189,17 +192,23 @@ def d_prime(hit_rate, false_alarm_rate):
         pade_approx_norminv(false_alarm_rate)
 
 # Functions for reading in data from .paq files
-def paq_data(paq, chan_name, threshold=1, threshold_ttl=False, plot=False):
+def paq_data(paq, chan_name, threshold=1, threshold_ttl = False, plot=False):
     '''
     Do not include any exclusion of data in this function
     returns the data in paq (from paq_read) from channel: chan_names
     if threshold_tll: returns sample that trigger occured on
     '''
-
     chan_idx = paq['chan_names'].index(chan_name)
     data = paq['data'][chan_idx, :]
-    if threshold_ttl:
-        data = threshold_detect(data,threshold)
+    if threshold_ttl == False:
+        data = data
+    elif threshold_ttl == 'Mix':
+        data = threshold_detect(data,threshold,cutoff = 5)
+    elif threshold_ttl == 'Lick':
+        threshold = 4.5# to clean the reward signal from licking - there is some cross talk across channels
+        data = threshold_detect(data,threshold,cutoff = 5)
+    else:
+        data = threshold_detect(data,threshold, cutoff=False)
 
     if plot:
         if threshold_ttl:
@@ -549,15 +558,15 @@ def test_responsive(flu, frame_clock, stim_times, pre_frames=10,
 
         prev_frame = stim_frame
 
-        pre_idx[stim_frame-pre_frames: stim_frame] = True
-        post_idx[stim_frame+offset: stim_frame+post_frames+offset] = True
+        pre_idx[(stim_frame-pre_frames): stim_frame] = True
+        post_idx[(stim_frame+offset): (stim_frame+post_frames+offset)] = True
 
     pre = flu[:, pre_idx]
     post = flu[:, post_idx]
 
-    if testType =='wilcoxon':
-        _, pvals = stats.ttest_ind(pre, post, axis=1)
-    elif testType =='ttest':
+    if testType =='ttest':
+        _, pvals = stats.ttest_rel(pre, post, axis=1)
+    elif testType =='wilcoxon':
         _, pvals = stats.wilcoxon(pre, post, axis=1)
 
     return pre, post, pvals
@@ -668,7 +677,7 @@ def lick_binner(pathname,trial_start, stChanName, stimulation=True ):
         paqData = pd.read_pickle (pathname +'paq-data.pkl')
     else:
         paqData = pd.read_pickle (pathname +'training-paq-data.pkl')
-    licks = paq_data (paqData, stChanName, 1, threshold_ttl=True)
+    licks = paq_data (paqData, stChanName, 1, threshold_ttl='Lick')
 
     binned_licks = []
 
@@ -889,7 +898,6 @@ def build_frames_ms(flu, cell_plane, paqio_frames, aligner, num_planes):
         frames_ms[plane_idx, 0:len(frame_times)] = frame_times
 
     return frames_ms
-
 
 class LoadMat():
     def __init__(self, filename):
