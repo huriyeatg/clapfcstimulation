@@ -365,7 +365,7 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         responsiveNoBoth = selectedExpGroup & responsiveNoBoth  # np.logical_and(selectedExpGroup,responsiveBoth) 
 
         responsiveAll = responsiveVis | responsiveOpto | responsiveBoth
-        nonResponsiveAll = responsiveNoVis | responsiveNoOpto | responsiveNoBoth
+        nonResponsiveAll = responsiveNoVis & responsiveNoOpto & responsiveNoBoth
 
         responsiveOnlyVis   = responsiveVis & responsiveNoOpto & responsiveNoBoth
         responsiveOnlyOpto   = responsiveOpto & responsiveNoVis & responsiveNoBoth

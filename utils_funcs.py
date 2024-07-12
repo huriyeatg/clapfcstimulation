@@ -263,7 +263,7 @@ def stim_start_frame(paq=None, stim_chan_name=None, frame_clock=None,
     elif frame_clock == 'BehOnly':
         frame_clock = paq_data(paq, 'pupilLoopback',threshold, threshold_ttl=True)
         stim_times  = paq_data(paq, stim_chan_name,threshold, threshold_ttl=True)
-        interStimFrameMin = 0 # 30 frames = 1 second
+        interStimFrameMin = 30 # 30 frames = 1 second
 
     stim_times = [stim for stim in stim_times if stim < np.nanmax(frame_clock)]
 
@@ -380,18 +380,18 @@ def trace_splitter(trace,t_starts, pre_frames, post_frames):
 
        '''
     trial_trace = np.array
+    print(trace.shape[0])
     for trial, t_start in enumerate(t_starts):
         # the trial occured before imaging started
     
-        # if t_start < flu.shape[1]: # min(clock) should be equal to clock[0]
-        #     print('prb')
-        #     continue
-        flu_chunk = trace[t_start-pre_frames:t_start+post_frames]
-
-        if trial==0:
-            trial_trace = flu_chunk
-        else:
-            trial_trace = np.dstack((trial_trace, flu_chunk))
+        if ((t_start +post_frames) < trace.shape[0]) and ((t_start-pre_frames) > 0): # min(clock) should be equal to clock[0]
+            #  print('prb')
+                #  continue
+            flu_chunk = trace[t_start-pre_frames:t_start+post_frames]
+            if trial==0:
+                trial_trace = flu_chunk
+            else:
+                trial_trace = np.dstack((trial_trace, flu_chunk))
 
     return trial_trace
 

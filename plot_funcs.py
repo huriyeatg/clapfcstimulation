@@ -181,7 +181,12 @@ def lineplot_withSEM (data, colorInd, label, axis=None):
     #data = data - ac
     palette1 = sns.color_palette('cividis') # for BOTH - blue
     palette2 = sns.color_palette('viridis') # for OPTO - greeen
-    color =['grey','red', palette1[0] ,palette2[4]] # visual, opto, both
+
+    #color =['grey','red', palette1[0] ,palette2[4]] # visual, opto, both
+    color =np.array([[0, 128,  128] ,
+       [192, 117,  38],
+       [110,  77, 136],
+       [254, 254, 254]])/255
     df = pd.DataFrame(data).melt()
     df['Time (seconds)'] = np.tile(x_axis, data.shape[1])
 
@@ -424,80 +429,10 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
     stat, p_value = stats.ks_2samp(plot_dataVmean, plot_dataBmean)
     print('Stats for ' + condition)
     print(f'KS test for {compare1} and {compare2} is {stat} and p: {p_value*len(data_means[0])}') # Correct for the number of observation
-    # Subplot 3:  Scatter plot
-    ax = axisAll[2]
-    plot_data = pd.DataFrame( {'Visual (DF/F)' :data_means[0], 
-                            'Opto modulation (DF/F)':  data_means[2]})
-    sns.scatterplot (y = 'Visual (DF/F)', x = 'Opto modulation (DF/F)', data = plot_data, 
-                     color='black', ax=ax, linewidth = 0.5, markers='.', s=7)
-    correlation_coefficient, p_value = stats.pearsonr(data_means[0], data_means[2])
-    print(f'Pearson correlation coefficient for {compare1} and {compare2} is {correlation_coefficient} and p: {p_value*len(data_means[0])} ')
-
-    ax.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.2)
-    ax.axvline(color = 'black', linestyle = '--', linewidth = 0.2)
-    ax.set_ylim(plotParams['scatterplotlimits'])
-    ax.set_xlim(plotParams['scatterplotlimits'])
-    
-    # INSET IN subplot 3:  Violin plots
-    xsmall = ['V', 'V + O']
-    inset_ax = inset_axes(ax, width="10%", height="25%", loc="upper right")
-    s_index = np.where((20>data_means[0]) &(data_means[0]>0))[0] # Select increased response (few extreme outliers excluded )
-    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
-                                'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
-
-    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax, linewidth = 0.1)
-    #plt.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.1)
-    plt.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
-                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
-                ha = 'center', va = 'top', fontsize = 5)
-    inset_ax.set_xticklabels(xsmall, rotation = 45)
-    inset_ax.set_ylabel('')
-    inset_ax.set_xlabel('')
-    inset_ax.set_ylim(-0.05,0.7)
-    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
-             inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
-        item.set_fontsize(5)
-
-    inset_ax = inset_axes(ax, width="10%", height="25%", loc="lower left",
-                          bbox_to_anchor=(0.1, 0.1, 1, 1),
-                            bbox_transform=ax.transAxes)
-    s_index = np.where((0>data_means[0]) &(data_means[0]>-20))[0] # Select decreased response (few extreme outliers excluded )
-    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
-                                    'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
-
-    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax,  linewidth = 0.1)
-    inset_ax.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
-                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
-                ha = 'center', va = 'top', fontsize = 5)
-    inset_ax.set_ylim(-0.4,0.1)
-    inset_ax.set_ylabel('')
-    inset_ax.set_xlabel('')
-    inset_ax.set_xticklabels(xsmall,rotation=45)
-    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
-            inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
-        item.set_fontsize(5)
-
-
-    ###### Subplot 4: Cumulative ECDF
-    ax = axisAll[4]
-    responses_vis = np.nanmean(plotData1[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1)
-    x, y = mfun.ecdf(responses_vis)
-    ax.plot(x, y, marker='.', markersize=1, color= plotParams['faceColors'][0], linestyle='none',label='Visual')
-
-    responses_both =  np.nanmean(plotData2[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1)
-    x, y = mfun.ecdf(responses_both)
-    ax.plot(x, y, marker='.', markersize=1, linestyle='none', color = plotParams['faceColors'][1], label='Visual + Opto')
- 
-    ax.set_xlabel('Neural response (DF/F)')
-    ax.set_ylabel('Cumulative density')
-    ax.set_ylim(plotParams['ylimitsforECDF'])
-    ax.set_xscale('log') 
-    #ax.legend(fontsize='small',loc='upper left', frameon=False)
-    
+    ###### Subplot 3: Absolute magnitude 
     cv_values, snr_values, mi_values, abs_values = get_moreStatsValues([compare1, compare2], cohort = cohort ,trainedLevel=trainedLevel, condition=condition)
     
-    ###### Subplot 5: Absolute magnitude
-    ax2 = axisAll[3]
+    ax2 = axisAll[2]
     abs_df = pd.DataFrame(abs_values)
     sns.histplot(data=abs_df, x='value', hue="Condition", element="step",
                  palette=plotParams['faceColors'], ax=ax2, **common_props)
@@ -510,9 +445,9 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
     #stat, p_value = stats.ks_2samp(data1, data2)
     #print(f'ABS: KS test: {len(data1)} {stat} and p: {p_value*len(data_means[0])}') # Correct for the number of observation
 
-    ###### Subplot 6: Coefficiency of variation differences between two conditions
+    ###### Subplot 4: Coefficiency of variation differences between two conditions
     #print(cv_values)
-    ax8 = axisAll[5]
+    ax8 = axisAll[3]
     plotParams['faceColors'][0] = 'grey'
     data_df = pd.DataFrame(cv_values)
     common_props = {'ci': 'sem'}
@@ -530,6 +465,8 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
             ax8.annotate('p < {:.3f}'.format(max(p_value, 0.001), 3),
                          xy=(0.5, y_max*1.05), ha='center', color='black')
     ax8.set_ylim(y_min*1.2, y_max*1.2)
+
+    ###### Subplot 5: Cross correlation differences between two conditions
     
     # save figure
     if savefigname:
@@ -749,10 +686,10 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
     animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto,dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath)    
     palette1 = sns.color_palette('cividis') # for OPTO - blue
     palette2 = sns.color_palette('viridis') # for BOTH - green
-    xlabel =   ['Sensory','Opto-boosted','Opto','All']
+    xlabel =   ['None','All','Sensory','Opto','Opto-boosted', ]
     if params == 'All':
-        cellresponsivenessList = ['Sensory', 'Opto-boosted', 'Opto','All']
-        colorpalet = ['red',palette2[4], palette1[0] , 'grey'] # all, visual, opto, both
+        cellresponsivenessList = ['None', 'All','Sensory','Opto','Opto-boosted',]
+        colorpalet = ['white', 'grey','red',palette1[0] , palette2[4], ] # all, visual, opto, both
     elif params == 'Sensory':
         cellresponsivenessList = ['Sensory']
         faceColors = 'red'
@@ -783,8 +720,8 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
                         'Type' : tLevel,
                         'Condition': [xlabel[idx]],
                         'All': output['all'],
-                        'EXC': output['EXC'],
-                        'INH': output['INH'],
+                        'Act': output['EXC'],
+                        'Sup': output['INH'],
                     })
                     diff_df = pd.concat([diff_df, temp_df], ignore_index=True)
     
@@ -800,19 +737,22 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
             ax.set_ylabel('Percentage of neurons (%)')
             ax.set_xlabel('Neural population based on responsiveness')
             ax.legend().set_visible(False)
-            ax.set_xlim(-1, 3.7)
+            ax.set_xlim(-0.5, len(cellresponsivenessList)+0.3)
             ax.set_ylim(0,90)
         else:
             ax.axhline(y = 50, color ='grey', linestyle = '--', linewidth = 0.2)
-            sns.violinplot(x = 'variable', y='value', data=diff_df.melt(value_vars=['EXC', 'INH']), 
+            sns.violinplot(x = 'variable', y='value', data=diff_df.melt(value_vars=['Act', 'Sup']), 
                         ax = ax, color = faceColors, width=0.4)
-            statVal, pval = stats.wilcoxon(diff_df['EXC'], diff_df['INH'])
+            statVal, pval = stats.wilcoxon(diff_df['Act'], diff_df['Sup'])
             print(params + ': p ='+ str(pval) + ' Wilcoxon: ' + str(statVal))
             
             if pval<0.05:
                 ax.annotate('p = {:.3f}'.format(max(pval, 0.001), 3),xy=(0.5, 90 ), 
                             ha = 'center', fontsize = 10)
-            ax.set_xticklabels(['Exc', 'Inh'])  # Set custom x-labels
+            else:
+                ax.annotate('n.s.',xy=(0.5, 90 ), 
+                            ha = 'center', fontsize = 10)
+            ax.set_xticklabels(['Act', 'Sup'])  # Set custom x-labels
             ax.set_ylabel('% of neurons', fontsize = 10)
             ax.set_ylim(0,100)
             ax.set_xlabel('')
@@ -998,6 +938,446 @@ def plot_lickDensityTraces(cohort,duration, axTrace, axSummary):
     ax.set_xticks([0,1])
     ax.set_xticklabels(['before stimuli', 'before reward'], rotation=15)
     return   df['mean1secbeforeReward'] - df['mean1secbeforeStim'] 
+    
+def plot_lickDensityTracesStimulation(interestedCohort, s_stimuliID, ax, axSummary):
+    pd.options.mode.chained_assignment = None  # disable chained assignment warning globally
+    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-extracted.pkl'
+    info = pd.read_pickle(infoPath) 
+
+    animalID = info.recordingList.animalID
+    stimuliID = info.recordingList.stimuliFamiliarity
+
+    if interestedCohort == 'Chrimson':  
+        animalList = [22101,22102, 22103, 22105,22107, 2303, 2304] # for Chrimson
+        titleSt = 'CLA Activation'
+        ymax = 35
+    elif interestedCohort == 'OPN3':
+        animalList = [2306, 2307,2308,2310,2311, 2312] # for OPN
+        titleSt = 'CLA Silencing'
+        ymax = 7
+
+    fRate = 20000
+    if s_stimuliID == 3:
+        titleSt = titleSt + ' - Cue Stimulated'
+    elif s_stimuliID == 4:
+        titleSt = titleSt + ' - Reward Stimulated'
+    elif s_stimuliID == 5:
+        titleSt = titleSt + ' - Trained'
+    else:
+        print('Stimuli ID is not correct. Please enter 3 for cue, 4 for reward stimulation')
+        #s_stimuliID = 3# 3 for cue, 4 for reward stimulation 
+    types = ['Stimulated', 'Not stimulated']
+    preStimDur = 2
+    duration = 8 # second -2 to 8 sec
+    bin_width = 10# Adjust this value to change the width of each bin
+
+    # Naming for these sessions are wrong - hard coded
+    stimuliID[486] = 0 # Crashed paq file
+    stimuliID[487] = 3
+    stimuliID[174] = 3
+    stimuliID[176] = 3
+    stimuliID[178] = 3
+
+    stimuliID[175] = 4
+    stimuliID[177] = 4
+    stimuliID[179] = 4
+    
+    animalID[176] = 22105
+    animalID[497] = 2304
+    animalID[498] = 2303
+ 
+    # Create behaviour sessions plots
+    num_bins = range(0, duration*fRate, int(fRate/bin_width))
+    # create  with all nans 
+    animal_hist_FirstAll = np.empty((0,len(num_bins)-1))
+    animalList_FirstAll = []
+    animal_hist_LastAll = np.empty((0,len(num_bins)-1))
+    animalList_LastAll = []
+    for s_animalID in animalList: 
+        #print(s_animalID)
+        indList = np.where((np.array(animalID) == s_animalID) & (np.array(stimuliID) == s_stimuliID ))[0]
+        if s_animalID ==2308 or s_animalID ==2311:
+                indList = indList[1:]   # First file is broken
+        if s_stimuliID==5: #  choose the last good performed training session. 
+            if s_animalID == 22101:
+                indListAll = indList[:-2]
+                indListAll = indListAll[::-1]# make the first index last, last index first:
+            elif s_animalID == 22102:
+                indListAll = indList[:-3]
+                indListAll = indListAll[::-1]# make the first index last, last index first:
+            elif s_animalID == 22103:
+                indListAll = indList[3:]
+                indListAll = indListAll[::-1]# make the first index last, last index first:
+            elif s_animalID == 2303 or s_animalID == 2304:
+                indListAll = indList[:-1]
+            elif s_animalID == 22105 or s_animalID == 22107:
+                indListAll = indList[::-1]
+            elif s_animalID == 2306:
+                indListAll = indList[:-3]
+            elif s_animalID == 2307:
+                indListAll = indList[:-2]
+            elif s_animalID == 2308 or s_animalID == 2310 or s_animalID == 2311:
+                indListAll = indList[:-5] # rest of the recordings are stimulation sessions
+            elif s_animalID == 2312:
+                indListAll = indList[:-1]
+            else: # Just choose the last one
+                indListAll = indList
+            indList = indListAll[-1:]
+        for ind in indList: 
+            print('animalID: ' + str(s_animalID) + ' - StimuliID: ' + str(s_stimuliID) + ' - ind: ' + str(ind))
+            try:
+                savepathname = info.recordingList.analysispathname[ind]
+                if s_stimuliID == 5:
+                    pathname = [f for f in glob.glob(savepathname + 'training-paq-data.pkl')]
+                    paqData = pd.read_pickle (pathname[0])
+                    trialStartTimes = utils.paq_data (paqData, 'maskerLED', 1, threshold_ttl=True)
+                    optoStimTimes = [0]
+                    stimulationValue = False
+                else:
+                    pathname = [f for f in glob.glob(savepathname + 'paq-data.pkl')]
+                    paqData = pd.read_pickle (pathname[0])
+                    # Get the stim start times 
+                    trialStartTimes = utils.paq_data (paqData, 'maskerLED', 1, threshold_ttl=True)
+                    optoStimTimes = utils.paq_data (paqData, 'optoLoopback', 1, threshold_ttl=True)
+                    # Clean the triggers from stimulation frequencies
+                    first_ind = np.where(np.diff(optoStimTimes)>1*fRate)
+                    first_ind = np.concatenate(([0], first_ind[0]+1))
+                    optoStimTimes = np.array(optoStimTimes)
+                    optoStimTimes = optoStimTimes[first_ind]
+                    stimulationValue = True
+
+                if s_stimuliID ==3:
+                    optoStimTimes = optoStimTimes - (2*fRate)
+                elif s_stimuliID ==4:
+                    if s_animalID ==22101 or s_animalID ==2311 or s_animalID ==2312 or s_animalID <2305:
+                        optoStimTimes = optoStimTimes -1
+                    else:
+                        optoStimTimes = optoStimTimes
+                if len(trialStartTimes)>150:
+                    trialStartTimes = trialStartTimes[1:75]
+                
+                common_indices = np.where(np.isin(trialStartTimes, np.intersect1d(trialStartTimes, optoStimTimes)))
+                not_common_indices = np.where(np.isin(trialStartTimes, np.setdiff1d(trialStartTimes, optoStimTimes)))
+                trialStartTimes = trialStartTimes - (2*fRate)
+                
+                # LEts get stimulated trials
+                licks, trial_licks = utils.lick_binner(savepathname, trialStartTimes[common_indices],'lickDetection', stimulation=stimulationValue)
+                animal_lick = trial_licks
+                if len(animal_lick)>0: # Not empty
+                    animal_hist = np.zeros(len(num_bins)-1)
+                    for i, array in enumerate(animal_lick):
+                        hist, bins = np.histogram(array, bins=num_bins, range=(0, duration*fRate))
+                        animal_hist = animal_hist + hist
+                    animal_hist = (animal_hist/(i+1))*bin_width
+                    if animal_hist[(4*bin_width)]> 20: #PackI/O crosstalk between channel creates a large TTL ehen reward is given, this is not lick - only exist in two animal
+                        animal_hist[(4*bin_width)] = animal_hist[(4*bin_width)-1] #animal_hist[(4*bin_width)] - ((i+1)/bin_width)
+                    #animal_hist = animal_hist - np.nanmedian(animal_hist[0:(1*fRate)],0)
+                    if s_stimuliID < 5:
+                        ax.plot( bins[1:],animal_hist, 'r', linewidth =1)
+                else:
+                    animal_hist = np.zeros(len(num_bins)-1)
+                if len(animal_hist)>0:
+                    animal_hist_FirstAll = np.vstack((animal_hist_FirstAll,animal_hist))
+                else:
+                    animal_hist_FirstAll = np.vstack((animal_hist_FirstAll,np.nan(len(num_bins)-1)))
+                animalList_FirstAll.append(s_animalID)
+
+                # Lets get NOT stimulated trials
+                licks, trial_licks = utils.lick_binner(savepathname, trialStartTimes[not_common_indices],'lickDetection', stimulation=stimulationValue)
+                animal_lick = trial_licks
+
+                if len(animal_lick)>0: # Not empty
+                    animal_hist = np.zeros(len(num_bins)-1)
+
+                    for i, array in enumerate(animal_lick):
+                        hist, bins = np.histogram(array, bins=num_bins, range=(0, duration*fRate))
+                        animal_hist = animal_hist + hist
+                    animal_hist = (animal_hist/(i+1))*bin_width
+                    if animal_hist[(4*bin_width)]> 20: #PackI/O crosstalk between channel creates a large TTL ehen reward is given, this is not lick - only exist in two animal
+                        animal_hist[(4*bin_width)] = animal_hist[(4*bin_width)-1] #animal_hist[(4*bin_width)] - ((i+1)/bin_width)
+
+                   # animal_hist = animal_hist - np.nanmedian(animal_hist[0:(1*fRate)],0)
+                    ax.plot( bins[1:],animal_hist, 'k', linewidth =1)
+                else:
+                    animal_hist = np.zeros(len(num_bins)-1)
+                if len(animal_hist)>0:
+                    animal_hist_LastAll = np.vstack((animal_hist_LastAll,animal_hist))
+                else:
+                    animal_hist_LastAll = np.vstack((animal_hist_LastAll,np.nan(len(num_bins)-1)))
+                animalList_LastAll.append(s_animalID)
+            except:
+                print('Error in ' + str(s_animalID) + ' - ' + str(ind))
+        
+    ax.plot( bins[1:],np.nanmean(animal_hist_LastAll,0 ), 'k', linewidth =4, alpha= 1, label = 'Not stimulated')
+    if s_stimuliID < 5:
+        ax.plot( bins[1:],np.nanmean(animal_hist_FirstAll,0), 'r', linewidth =4, alpha= 1, label = 'Stimulated')
+    ax.legend(fontsize='small',loc='upper right', frameon=False)
+    ax.set_xlim(0, duration*fRate)
+    ax.set_xticks (range(0,(duration*fRate)+1,fRate), range(-2,duration-1,1))
+    ax.set_ylabel('Lick Density (Hz)')
+    ax.set_xlabel('Time (sec)')
+    ax.axvline(x=2*fRate, color='k', linestyle='-', linewidth=2)
+    ax.axvline(x=(2+2) *fRate, color='k', linestyle='--', linewidth=2)
+    ax.set_title(titleSt)
+    # For Reward stimulated - add a grey bar from 0 to 2 to show the stimulation
+    if s_stimuliID == 4:
+        ax.axvspan(4*fRate, 6*fRate, alpha=0.4, color='grey')
+    elif s_stimuliID == 3:
+        ax.axvspan(2*fRate, 4*fRate, alpha=0.4, color='grey')
+
+    ############################################################################################################
+    ax = axSummary
+    # violing plot for each animal average of 1 sec before water delivery and 1 sec before stimuli
+    visualStimDur =2
+    OnesecbeforeStimWindow = np.where((bins>(preStimDur-1)*fRate) & (bins<(preStimDur)*fRate))[0]
+    OnesecbeforeRewardWindow = np.where((bins>(preStimDur-1+visualStimDur)*fRate) & (bins<(preStimDur+visualStimDur)*fRate))[0]
+    OnesecafterRewardWindow = np.where((bins>(preStimDur+visualStimDur)*fRate) & (bins<(preStimDur+visualStimDur+1)*fRate))[0]
+    mean1secbeforeStimNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecbeforeStimWindow], axis = 1) #if len(animal_hist_LastAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+    mean1secbeforeStimWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecbeforeStimWindow], axis = 1)  if len(animal_hist_FirstAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+    mean1secbeforeRewardWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecbeforeRewardWindow], axis = 1) if len(animal_hist_FirstAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan) 
+    mean1secbeforeRewardNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecbeforeRewardWindow], axis = 1) if len(animal_hist_LastAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+    mean1secafterRewardWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecafterRewardWindow], axis = 1) if len(animal_hist_FirstAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)   
+    mean1secafterRewardNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecafterRewardWindow], axis = 1) if len(animal_hist_LastAll) > 0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+    animalList_FirstAll = np.array(animalList_FirstAll) if len(animalList_FirstAll)>0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+    animalList_LastAll = np.array(animalList_LastAll) if len(animalList_LastAll)>0 else np.full(len(mean1secbeforeStimNoStimulation), np.nan)
+
+    df = pd.DataFrame({
+        'mean1secbeforeStimNoStimulation': mean1secbeforeStimNoStimulation,
+        'mean1secbeforeStimWithStimulation': mean1secbeforeStimWithStimulation,
+        'mean1secbeforeRewardNoStimulation': mean1secbeforeRewardNoStimulation,
+        'mean1secbeforeRewardWithStimulation': mean1secbeforeRewardWithStimulation,
+        'mean1secafterRewardNoStimulation': mean1secafterRewardNoStimulation,
+        'mean1secafterRewardWithStimulation': mean1secafterRewardWithStimulation,
+        })
+  
+    if s_stimuliID <5:
+        sns.swarmplot(data=df, ax = ax, palette = ['k', 'r','k', 'r','k', 'r'])
+        for index, row in df.iterrows():
+            ax.plot([0, 1], [row['mean1secbeforeStimNoStimulation'], row['mean1secbeforeStimWithStimulation']], color='grey', alpha=0.5)
+            ax.plot([2, 3], [row['mean1secbeforeRewardNoStimulation'], row['mean1secbeforeRewardWithStimulation']], color='grey', alpha=0.5)
+            ax.plot([4, 5], [row['mean1secafterRewardNoStimulation'], row['mean1secafterRewardWithStimulation']], color='grey', alpha=0.5)
+        ax.set_xticks([0.5, 2.5, 4.5])
+    else:
+        df = pd.DataFrame({
+            'mean1secbeforeStimNoStimulation': mean1secbeforeStimNoStimulation,
+            'mean1secbeforeRewardNoStimulation': mean1secbeforeRewardNoStimulation,
+            'mean1secafterRewardNoStimulation': mean1secafterRewardNoStimulation, 
+            })
+        sns.swarmplot(data=df, ax = ax, palette = ['k', 'k', 'k'])
+        ax.set_xticks([0, 1, 2])
+
+    ax.set_ylabel('Lick Density (Hz)')
+    ax.set_ylim((-1*ymax/5),ymax)
+    ax.set_xticklabels(['Baseline', 'Anticipatory', 'Consumption'])
+
+    data = {
+    'AnimalID': np.concatenate([animalList_FirstAll, animalList_LastAll, animalList_FirstAll,
+                                  animalList_LastAll, animalList_FirstAll, animalList_LastAll]),
+    'LickDensity': np.concatenate([mean1secbeforeStimWithStimulation, mean1secbeforeStimNoStimulation,
+                                  mean1secbeforeRewardWithStimulation, mean1secbeforeRewardNoStimulation,
+                                  mean1secafterRewardWithStimulation, mean1secafterRewardNoStimulation]),
+    'Stimulated': np.concatenate([np.ones_like(mean1secbeforeStimWithStimulation), np.zeros_like(mean1secbeforeStimNoStimulation),
+                                  np.ones_like(mean1secbeforeRewardWithStimulation), np.zeros_like(mean1secbeforeRewardNoStimulation),
+                                  np.ones_like(mean1secafterRewardWithStimulation), np.zeros_like(mean1secafterRewardNoStimulation)]),
+    'Window': ['Baseline']*len(mean1secbeforeStimWithStimulation) + ['Baseline']*len(mean1secbeforeStimNoStimulation) +
+                  ['Anticipatory']*len(mean1secbeforeRewardWithStimulation) + ['Anticipatory']*len(mean1secbeforeRewardNoStimulation) +
+                  ['Consumption']*len(mean1secafterRewardWithStimulation) + ['Consumption']*len(mean1secafterRewardNoStimulation)
+    }
+    df = pd.DataFrame(data)
+    return df
+
+def plot_pupilTracesStimulation(interestedCohort, s_stimuliID, ax, axSummary):
+    pd.options.mode.chained_assignment = None  # disable chained assignment warning globally
+    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-extracted.pkl'
+    info = pd.read_pickle(infoPath) 
+
+    animalID = info.recordingList.animalID
+    stimuliID = info.recordingList.stimuliFamiliarity
+
+    if interestedCohort == 'Chrimson':  
+        animalList = [22101,22102, 22103, 22105,22107, 2303, 2304] # for Chrimson
+        titleSt = 'CLA Activation'
+        ymax = 0.4
+    elif interestedCohort == 'OPN3':
+        animalList = [2306, 2307,2308,2310,2311, 2312] # for OPN
+        titleSt = 'CLA Silencing'
+        ymax = 0.06
+
+    fRate = 20000
+    if s_stimuliID == 3:
+        titleSt = titleSt + ' - Cue'
+    elif s_stimuliID == 4:
+        titleSt = titleSt + ' - Reward'
+    elif s_stimuliID == 5:
+        titleSt = titleSt + ' - Control'
+    else:
+        print('Stimuli ID is not correct. Please enter 3 for cue, 4 for reward stimulation')
+        #s_stimuliID = 3# 3 for cue, 4 for reward stimulation 
+    types = ['Stimulated', 'Not stimulated']
+    preStimDur = 2
+    duration = 8 # second -2 to 8 sec
+    bin_width = 10# Adjust this value to change the width of each bin
+
+    # Naming for these sessions are wrong - hard coded
+    stimuliID[486] = 0
+    stimuliID[487] = 3
+    stimuliID[174] = 3
+    stimuliID[176] = 3
+    stimuliID[178] = 3
+
+    stimuliID[175] = 4
+    stimuliID[177] = 4
+    stimuliID[179] = 4
+    
+    animalID[176] = 22105
+    animalID[497] = 2304
+    animalID[498] = 2303
+ 
+    # Create behaviour sessions plots
+    num_bins = range(0, duration*fRate, int(fRate/bin_width))
+    # create  with all nans 
+    animal_hist_FirstAll = np.empty((0,240))
+    animalList_FirstAll = []
+    animal_hist_LastAll = np.empty((0,240))
+    animalList_LastAll = []
+    for s_animalID in animalList: 
+        #print(s_animalID)
+        indList = np.where((np.array(animalID) == s_animalID) & (np.array(stimuliID) == s_stimuliID ))[0]
+        if s_animalID ==2308 or s_animalID ==2311:
+                indList = indList[1:]   # First file is broken
+        pre_frames, post_frames, analysisWindowDur, simulationDur = set_analysisParams ()
+        
+        for ind in indList:        
+            #print(indList)
+            savepathname = info.recordingList.analysispathname[ind]
+            pupilpathname = [f for f in glob.glob(savepathname + 'extracted_variables.pkl')]
+            if len(pupilpathname) >0:
+                #try: 
+                    pathname = [f for f in glob.glob(savepathname + 'paq-data.pkl')]
+                    paqData = pd.read_pickle (pathname[0])
+                    pupilData = pd.read_pickle (pupilpathname[0])
+
+                    # Get the stim start times 
+                    trialStartTimes = utils.paq_data (paqData, 'maskerLED', 1, threshold_ttl=True)
+                    optoStimTimes = utils.paq_data (paqData, 'optoLoopback', 1, threshold_ttl=True)
+                
+                    # Clean the triggers from stimulation frequencies
+                    first_ind = np.where(np.diff(optoStimTimes)>1*fRate)
+                    first_ind = np.concatenate(([0], first_ind[0]+1))
+                    optoStimTimes = np.array(optoStimTimes)
+                    optoStimTimes = optoStimTimes[first_ind]
+
+                    if s_stimuliID ==3:
+                        optoStimTimes = optoStimTimes - (2*fRate)
+                    elif s_stimuliID ==4:
+                        if s_animalID ==22101 or s_animalID ==2311 or s_animalID ==2312 or s_animalID <2305:
+                            optoStimTimes = optoStimTimes -1
+                        else:
+                            optoStimTimes = optoStimTimes
+                    if len(trialStartTimes)>150:
+                        trialStartTimes = trialStartTimes[1:75]
+                    
+                    common_indices = np.where(np.isin(trialStartTimes, np.intersect1d(trialStartTimes, optoStimTimes)))
+                    not_common_indices = np.where(np.isin(trialStartTimes, np.setdiff1d(trialStartTimes, optoStimTimes)))
+                    trialStartTimes = trialStartTimes - (2*fRate)
+                    # Each item in trialStartTime divide 20,000 and multiply with 30 to get the time in seconds
+                    trialStartTimes = [np.round(int(i*30/20000)) for i in trialStartTimes]
+        
+                    # LEts get stimulated trials
+                    # licks, trial_licks = utils.lick_binner(savepathname, trialStartTimes[common_indices],'lickDetection', stimulation=True)
+                    # animal_lick = trial_licks
+                    pupilrawh = pupilData[17] # ['horizontalDis']
+                   # print(pupilrawh)
+                   #print('StartTimes')
+                   # print(trialStartTimes)
+                   # startTimes = [ trialStartTimes[i] for i in common_indices[0]]
+                   # print(len(startTimes))
+                    pupil_trace = pupilrawh ['Both'] #utils.trace_splitter(pupilrawh, startTimes, pre_frames, post_frames) # Cell x time x trial
+                    print(pupil_trace.shape)
+                    ax.plot(pupil_trace, 'r', linewidth =1)
+
+                    animal_hist_FirstAll = np.vstack((animal_hist_FirstAll,pupil_trace))
+                    animalList_FirstAll.append(s_animalID)
+
+                    # Lets get NOT stimulated trials
+                    startTimes = [ trialStartTimes[i] for i in not_common_indices[0]]
+                    print(len(startTimes))
+                    pupil_trace = pupilrawh ['onlyVis'] #u utils.trace_splitter(pupilrawh, startTimes, pre_frames, post_frames) # Cell x time x trial
+                    #pupil_trace = np.squeeze(np.nanmean(pupil_trace, axis=2)) - np.nanmean(np.squeeze(np.nanmean(pupil_trace[], axis=2))[0:10]) 
+                    ax.plot( pupil_trace, 'k', linewidth =1)
+
+                    animal_hist_LastAll = np.vstack((animal_hist_LastAll,pupil_trace))
+                    animalList_LastAll.append(s_animalID)
+                # except:
+                #     print('Error in pupil data')
+            
+    fRate = 30
+    duration = 8
+    ax.plot( np.nanmean(animal_hist_LastAll,0 ), 'k', linewidth =4, alpha= 1, label = 'Not stimulated')
+    ax.plot( np.nanmean(animal_hist_FirstAll,0), 'r', linewidth =4, alpha= 1, label = 'Stimulated')
+    ax.legend(fontsize='small',loc='upper left', frameon=False)
+    ax.set_xlim(0, duration*fRate)
+    ax.set_xticks (range(0,(duration*fRate)+1,fRate), range(-2,duration-1,1))
+    ax.set_ylabel('Lick Density (Hz)')
+    ax.set_xlabel('Time (sec)')
+   # ax.set_ylim((-1*ymax/5),ymax)
+    ax.axvline(x=2*fRate, color='k', linestyle='-', linewidth=2)
+    #ax.text((2-0.6)*fRate, ymax+1, 'Stimuli', fontsize=8, ha='center')
+     # add a dashed line for the end of the stimulation
+    ax.axvline(x=(2+2) *fRate, color='k', linestyle='--', linewidth=2)
+    #ax.text((2+2-0.5)*fRate, ymax+1, 'Reward', fontsize=8, ha='center')
+    ax.set_title(titleSt)
+    ############################################################################################################
+#     ax = axSummary
+#     # violing plot for each animal average of 1 sec before water delivery and 1 sec before stimuli
+#     visualStimDur =2
+#     OnesecbeforeStimWindow = np.where((bins>(preStimDur-1)*fRate) & (bins<(preStimDur)*fRate))[0]
+#     mean1secbeforeStimWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecbeforeStimWindow], axis = 1)
+#     mean1secbeforeStimNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecbeforeStimWindow], axis = 1)
+#     OnesecbeforeRewardWindow = np.where((bins>(preStimDur-1+visualStimDur)*fRate) & (bins<(preStimDur+visualStimDur)*fRate))[0]
+#     mean1secbeforeRewardWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecbeforeRewardWindow], axis = 1)
+#     mean1secbeforeRewardNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecbeforeRewardWindow], axis = 1)
+#     OnesecafterRewardWindow = np.where((bins>(preStimDur+visualStimDur)*fRate) & (bins<(preStimDur+visualStimDur+1)*fRate))[0]
+#     mean1secafterRewardWithStimulation = np.nanmean(animal_hist_FirstAll[:,OnesecafterRewardWindow], axis = 1)
+#     mean1secafterRewardNoStimulation = np.nanmean(animal_hist_LastAll[:,OnesecafterRewardWindow], axis = 1)
+    
+    
+#     df = pd.DataFrame({
+#         'mean1secbeforeStimNoStimulation': mean1secbeforeStimNoStimulation,
+#         'mean1secbeforeStimWithStimulation': mean1secbeforeStimWithStimulation,
+#         'mean1secbeforeRewardNoStimulation': mean1secbeforeRewardNoStimulation,
+#         'mean1secbeforeRewardWithStimulation': mean1secbeforeRewardWithStimulation,
+#         'mean1secafterRewardNoStimulation': mean1secafterRewardNoStimulation,
+#         'mean1secafterRewardWithStimulation': mean1secafterRewardWithStimulation,
+#         })
+
+#     sns.swarmplot(data=df, ax = ax, palette = ['k', 'r','k', 'r','k', 'r'])
+#     for index, row in df.iterrows():
+#         ax.plot([0, 1], [row['mean1secbeforeStimNoStimulation'], row['mean1secbeforeStimWithStimulation']], color='grey', alpha=0.5)
+#         ax.plot([2, 3], [row['mean1secbeforeRewardNoStimulation'], row['mean1secbeforeRewardWithStimulation']], color='grey', alpha=0.5)
+#         ax.plot([4, 5], [row['mean1secafterRewardNoStimulation'], row['mean1secafterRewardWithStimulation']], color='grey', alpha=0.5)
+#    # ax.set_ylim(-0.5,ymax+2)
+#     #ax.set_xlim(-0.5, 1.5)
+#     ax.set_ylabel('Lick Density (Hz)')
+#     ax.set_xticks([0.5, 2.5, 4.5])
+#     ax.set_ylim((-1*ymax/5),ymax)
+#     ax.set_xticklabels(['Baseline', 'Anticipatory', 'Consumption'])
+
+#     data = {
+#     'AnimalID': np.concatenate([animalList_FirstAll, animalList_LastAll, animalList_FirstAll,
+#                                   animalList_LastAll, animalList_FirstAll, animalList_LastAll]),
+#     'LickDensity': np.concatenate([mean1secbeforeStimWithStimulation, mean1secbeforeStimNoStimulation,
+#                                   mean1secbeforeRewardWithStimulation, mean1secbeforeRewardNoStimulation,
+#                                   mean1secafterRewardWithStimulation, mean1secafterRewardNoStimulation]),
+#     'Stimulated': np.concatenate([np.ones_like(mean1secbeforeStimWithStimulation), np.zeros_like(mean1secbeforeStimNoStimulation),
+#                                   np.ones_like(mean1secbeforeRewardWithStimulation), np.zeros_like(mean1secbeforeRewardNoStimulation),
+#                                   np.ones_like(mean1secafterRewardWithStimulation), np.zeros_like(mean1secafterRewardNoStimulation)]),
+#     'Condition': ['Baseline']*len(mean1secbeforeStimWithStimulation) + ['1sec before Stim']*len(mean1secbeforeStimNoStimulation) +
+#                   ['Anticipatory']*len(mean1secbeforeRewardWithStimulation) + ['1sec before Reward']*len(mean1secbeforeRewardNoStimulation) +
+#                   ['Consumption']*len(mean1secafterRewardWithStimulation) + ['1sec after Reward']*len(mean1secafterRewardNoStimulation)
+#     }
+#     df = pd.DataFrame(data)
+    return duration
 
 def plot_correlationMatrix(stimType,cohort, trainedLevel, responsiveness,  
                            axs=None, savefigname=None, savefigpath=None):
@@ -1180,3 +1560,244 @@ def plot_correlationMatrix_meanChange(compareType,cohort, responsiveness, params
 
 
 ## More code here
+
+def population_plotsVersion1(compare1, compare2, sortType=None, cohort = None, 
+                       trainedLevel=None, condition=None, plotParams = None,
+                       axisAll=None, savefigname=None, savefigpath=None):
+
+
+    # Set params
+    pre_frames, post_frames, analysis_time, simulationDur = set_analysisParams ()
+    if plotParams is None:
+        plotParams = {
+            'ylimitsforhist': [0, 750],
+            'xlimitsforhist': [-0.75, 0.75],
+            'analysis_time': 1500,  # in ms
+            'colorbarlimitsForHeatMap': [-1, 1],
+            'scatterplotlimits': [-4.5, 4.5],
+            'ylimitsforECDF': [0.6, 1.1],
+            'xlimitsforABS': [-0.1, 2],
+            'ylimitsforCV': [0.1, 0.15],
+            'faceColors': ['black','red'],
+                    }
+    common_props = {'binwidth': 0.035}
+        
+    plotDatas,_ = createTrialvsTraceMatrix([compare1, compare2], sortType, cohort, trainedLevel, condition)
+    plotData1 = plotDatas[0]
+    plotData2 = plotDatas[1]
+    plot_dataDIFF = plotData2 - plotData1
+
+    # Subplot 1-2: Histogtams of Compare 1 & Compare 2
+    titles = [compare1, compare2]
+
+    data_means = [np.nanmean(data[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1) for data in [plotData1, plotData2, plot_dataDIFF]]
+    for idx, (title, color, data_mean) in enumerate(zip(titles, plotParams['faceColors'], data_means)):
+        ax = axisAll[idx]
+        sns.histplot(data_mean, color=color, ax=ax, **common_props)
+        ax.set_ylim(plotParams['ylimitsforhist'])
+        ax.set_title(title)
+        ax.set_xlabel('DF\F')
+        ax.set_xlim(plotParams['xlimitsforhist'])
+        ax.set_ylabel('# cells') #if idx == 0 else None
+
+    plot_dataVmean = data_means[0] # np.nanmean(plotData1 [:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis = 1)
+    plot_dataBmean = data_means[1] # np.nanmean(plotData2 [:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis = 1)
+    stat, p_value = stats.ks_2samp(plot_dataVmean, plot_dataBmean)
+    print('Stats for ' + condition)
+    print(f'KS test for {compare1} and {compare2} is {stat} and p: {p_value*len(data_means[0])}') # Correct for the number of observation
+    # Subplot 3:  Scatter plot
+    ax = axisAll[2]
+    plot_data = pd.DataFrame( {'Visual (DF/F)' :data_means[0], 
+                            'Opto modulation (DF/F)':  data_means[2]})
+    sns.scatterplot (y = 'Visual (DF/F)', x = 'Opto modulation (DF/F)', data = plot_data, 
+                     color='black', ax=ax, linewidth = 0.5, markers='.', s=7)
+    correlation_coefficient, p_value = stats.pearsonr(data_means[0], data_means[2])
+    print(f'Pearson correlation coefficient for {compare1} and {compare2} is {correlation_coefficient} and p: {p_value*len(data_means[0])} ')
+
+    ax.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.2)
+    ax.axvline(color = 'black', linestyle = '--', linewidth = 0.2)
+    ax.set_ylim(plotParams['scatterplotlimits'])
+    ax.set_xlim(plotParams['scatterplotlimits'])
+    
+    # INSET IN subplot 3:  Violin plots
+    xsmall = ['V', 'V + O']
+    inset_ax = inset_axes(ax, width="10%", height="25%", loc="upper right")
+    s_index = np.where((20>data_means[0]) &(data_means[0]>0))[0] # Select increased response (few extreme outliers excluded )
+    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
+                                'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
+
+    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax, linewidth = 0.1)
+    #plt.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.1)
+    plt.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
+                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
+                ha = 'center', va = 'top', fontsize = 5)
+    inset_ax.set_xticklabels(xsmall, rotation = 45)
+    inset_ax.set_ylabel('')
+    inset_ax.set_xlabel('')
+    inset_ax.set_ylim(-0.05,0.7)
+    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
+             inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
+        item.set_fontsize(5)
+
+    inset_ax = inset_axes(ax, width="10%", height="25%", loc="lower left",
+                          bbox_to_anchor=(0.1, 0.1, 1, 1),
+                            bbox_transform=ax.transAxes)
+    s_index = np.where((0>data_means[0]) &(data_means[0]>-20))[0] # Select decreased response (few extreme outliers excluded )
+    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
+                                    'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
+
+    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax,  linewidth = 0.1)
+    inset_ax.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
+                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
+                ha = 'center', va = 'top', fontsize = 5)
+    inset_ax.set_ylim(-0.4,0.1)
+    inset_ax.set_ylabel('')
+    inset_ax.set_xlabel('')
+    inset_ax.set_xticklabels(xsmall,rotation=45)
+    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
+            inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
+        item.set_fontsize(5)
+
+
+    ###### Subplot 4: Cumulative ECDF
+    ax = axisAll[4]
+    responses_vis = np.nanmean(plotData1[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1)
+    x, y = mfun.ecdf(responses_vis)
+    ax.plot(x, y, marker='.', markersize=1, color= plotParams['faceColors'][0], linestyle='none',label='Visual')
+
+    responses_both =  np.nanmean(plotData2[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1)
+    x, y = mfun.ecdf(responses_both)
+    ax.plot(x, y, marker='.', markersize=1, linestyle='none', color = plotParams['faceColors'][1], label='Visual + Opto')
+ 
+    ax.set_xlabel('Neural response (DF/F)')
+    ax.set_ylabel('Cumulative density')
+    ax.set_ylim(plotParams['ylimitsforECDF'])
+    ax.set_xscale('log') 
+    #ax.legend(fontsize='small',loc='upper left', frameon=False)
+    
+    cv_values, snr_values, mi_values, abs_values = get_moreStatsValues([compare1, compare2], cohort = cohort ,trainedLevel=trainedLevel, condition=condition)
+    
+    ###### Subplot 5: Absolute magnitude
+    ax2 = axisAll[3]
+    abs_df = pd.DataFrame(abs_values)
+    sns.histplot(data=abs_df, x='value', hue="Condition", element="step",
+                 palette=plotParams['faceColors'], ax=ax2, **common_props)
+    ax2.set_xlabel('Absolute magnitude')
+    ax2.set_xlim(plotParams['xlimitsforABS'])
+    ax2.set_ylabel('# cells')
+    ax2.legend(labels=['Visual + Opto', 'Visual'],fontsize='small', loc='upper right', frameon=False)
+    #data1 = abs_values['value'][abs_values['Condition'] == compare1]
+    #data2 = abs_values['value'][abs_values['Condition'] == compare2]
+    #stat, p_value = stats.ks_2samp(data1, data2)
+    #print(f'ABS: KS test: {len(data1)} {stat} and p: {p_value*len(data_means[0])}') # Correct for the number of observation
+
+    ###### Subplot 6: Coefficiency of variation differences between two conditions
+    #print(cv_values)
+    ax8 = axisAll[5]
+    plotParams['faceColors'][0] = 'grey'
+    data_df = pd.DataFrame(cv_values)
+    common_props = {'ci': 'sem'}
+    sns.boxplot(data=data_df, x="Condition", y="value", showfliers = False, width=0.6, saturation=0.75, #ci =' sem',  #outliers= False,  #element="step",
+                 palette=plotParams['faceColors'], ax=ax8)
+    ax8.set_ylabel ('Coefficient of Variation')
+    stat, p_value = stats.wilcoxon(data_df[data_df['Condition'] == 'Visual']['value'],
+                                    data_df[data_df['Condition'] == 'Visual + Opto']['value'])
+    
+    print(p_value)
+    y_max = data_df.groupby('Condition')['value'].quantile(0.75).max() + (data_df.groupby('Condition')['value'].quantile(0.75) - data_df.groupby('Condition')['value'].quantile(0.25)).max() * 1.5
+    y_min = 0#data_df.groupby('Condition')['value'].quantile(0.25).min() - (data_df.groupby('Condition')['value'].quantile(0.25) - data_df.groupby('Condition')['value'].quantile(0.25)).min() * 1.5
+
+    if p_value < 0.05:
+            ax8.annotate('p < {:.3f}'.format(max(p_value, 0.001), 3),
+                         xy=(0.5, y_max*1.05), ha='center', color='black')
+    ax8.set_ylim(y_min*1.2, y_max*1.2)
+    
+    # save figure
+    if savefigname:
+        save_figure(savefigname, savefigpath)
+
+def scatterModulationvsBaseFiring(compare1, compare2, sortType=None, cohort = None, 
+                       trainedLevel=None, condition=None, plotParams = None,
+                       axisAll=None):
+    # Get the data
+    pre_frames, post_frames, analysis_time, simulationDur = set_analysisParams ()
+    if plotParams is None:
+        plotParams = {
+            'ylimitsforhist': [0, 750],
+            'xlimitsforhist': [-0.75, 0.75],
+            'analysis_time': 1500,  # in ms
+            'colorbarlimitsForHeatMap': [-1, 1],
+            'scatterplotlimits': [-4.5, 4.5],
+            'ylimitsforECDF': [0.6, 1.1],
+            'xlimitsforABS': [-0.1, 2],
+            'ylimitsforCV': [0.1, 0.15],
+            'faceColors': ['black','red'],
+                    }
+    common_props = {'binwidth': 0.035}
+    if axisAll is None:
+        fig, axisAll = plt.subplots(1, 1, figsize=(4, 4))
+        ax = axisAll
+    else:
+        ax = axisAll
+
+    plotDatas,_ = createTrialvsTraceMatrix([compare1, compare2], sortType, cohort, trainedLevel, condition)
+    plotData1 = plotDatas[0]
+    plotData2 = plotDatas[1]
+    plot_dataDIFF = plotData2 - plotData1
+
+    data_means = [np.nanmean(data[:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis=1) for data in [plotData1, plotData2, plot_dataDIFF]]
+    plot_dataVmean = data_means[0] # np.nanmean(plotData1 [:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis = 1)
+    plot_dataBmean = data_means[1] 
+
+    # Scatter for Compare 1 & Compare 2
+    plot_data = pd.DataFrame( {'Visual (DF/F)' :data_means[0], 
+                            'Opto modulation (DF/F)':  data_means[2]})
+    sns.scatterplot (y = 'Visual (DF/F)', x = 'Opto modulation (DF/F)', data = plot_data, 
+                     color='black', ax=ax, linewidth = 0.5, markers='.', s=7)
+    correlation_coefficient, p_value = stats.pearsonr(data_means[0], data_means[2])
+    print(f'Pearson correlation coefficient for {compare1} and {compare2} is {correlation_coefficient} and p: {p_value*len(data_means[0])} ')
+
+    ax.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.2)
+    ax.axvline(color = 'black', linestyle = '--', linewidth = 0.2)
+    ax.set_ylim(plotParams['scatterplotlimits'])
+    ax.set_xlim(plotParams['scatterplotlimits'])
+    ax.set_title(f'{condition}')
+    
+    # INSET IN subplot 3:  Violin plots
+    xsmall = ['V', 'V + O']
+    inset_ax = inset_axes(ax, width="10%", height="25%", loc="upper right")
+    s_index = np.where((20>data_means[0]) &(data_means[0]>0))[0] # Select increased response (few extreme outliers excluded )
+    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
+                                'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
+
+    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax, linewidth = 0.1)
+    #plt.axhline(y = 0, color = 'black', linestyle = '--', linewidth = 0.1)
+    plt.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
+                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
+                ha = 'center', va = 'top', fontsize = 5)
+    inset_ax.set_xticklabels(xsmall, rotation = 45)
+    inset_ax.set_ylabel('')
+    inset_ax.set_xlabel('')
+    inset_ax.set_ylim(-0.05,0.7)
+    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
+             inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
+        item.set_fontsize(5)
+
+    inset_ax = inset_axes(ax, width="10%", height="25%", loc="lower left",
+                          bbox_to_anchor=(0.1, 0.1, 1, 1),
+                            bbox_transform=ax.transAxes)
+    s_index = np.where((0>data_means[0]) &(data_means[0]>-20))[0] # Select decreased response (few extreme outliers excluded )
+    plot_data = pd.DataFrame( {'Mean DFF' :np.concatenate((data_means[0][s_index], data_means[1][s_index])), 
+                                    'Type':  np.concatenate((np.repeat('Visual', len(data_means[0][s_index])), np.repeat('Visual+Opto', len(data_means[1][s_index]))))})
+
+    sns.barplot(x = 'Type', y = 'Mean DFF', data = plot_data, palette=plotParams['faceColors'], ax=inset_ax,  linewidth = 0.1)
+    inset_ax.annotate('p = {:.3f}'.format(stats.ttest_rel(plot_dataVmean[s_index], plot_dataBmean[s_index], alternative = 'greater')[1], 3), 
+                xy=(0.5, 1), xytext=(0, 0), textcoords='offset points', 
+                ha = 'center', va = 'top', fontsize = 5)
+    inset_ax.set_ylim(-0.4,0.1)
+    inset_ax.set_ylabel('')
+    inset_ax.set_xlabel('')
+    inset_ax.set_xticklabels(xsmall,rotation=45)
+    for item in ([inset_ax.title, inset_ax.xaxis.label, inset_ax.yaxis.label] +
+            inset_ax.get_xticklabels() + inset_ax.get_yticklabels()):
+        item.set_fontsize(5)
