@@ -1,16 +1,18 @@
 # Functions used more globally
 
 import platform
-import os
+import os, sys
 import pandas as pd
 import numpy as np
 import tifffile
 import utils_funcs as utils
 import plot_funcs as pfun
-import paq2py
+import delete_move_code.paq2py as paq2py
 import re
 import pickle
 from statsmodels.stats.multitest import fdrcorrection
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 from scipy.stats import entropy
 from scipy import stats
 from sklearn.feature_selection import mutual_info_classif
@@ -29,17 +31,17 @@ class analysis:
             # for Windows - Huriye PC
             print("Computer: Huriye MAC")
             self.recordingListPath = "/Users/Huriye/Documents/Code/clapfcstimulation/"
-            self.rawPath           = "Z:\\Data\\"
+            self.rawPath           = "Z:\\"
             self.rootPath          = "/Users/Huriye/Documents/Code/clapfcstimulation/"
-        elif platform.platform() == 'Windows-10-10.0.19045-SP0':
+        elif platform.platform() == 'Windows-10-10.0.26100-SP0':
             print("Computer: Huriye Windows")
             # for Windows - Huriye PC
             self.recordingListPath = "C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\"
-            self.rawPath           = "Z:\\Data\\"
+            self.rawPath           = "Y:\\Data\\"
             self.rootPath          = "C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\"
         else:
             print("Problem detected")
-            print(platform.platform())
+            print(platform.platform()) 
 
         self.analysisPath =  os.path.join(self.rootPath, 'analysis')
         self.figsPath     =  os.path.join(self.rootPath, 'figs')
@@ -85,26 +87,40 @@ def update_pupil_traces(extData, len_cellID, indPupil, pupilID, pupil_traceBoth,
     """
     pupil_trace = extData[17]
     pupilQuality = extData[18]
-    trace_shapes = (len_cellID, 240)  # Assuming fixed shape for simplicity
+    trace_shape = (len_cellID, 240)  # Assuming fixed shape for simplicity
 
-    def get_or_fake(trace_key):
-        if trace_key in pupil_trace and pupilQuality > 0.75:
-            return np.tile(pupil_trace[trace_key], (len_cellID, 1))
-        return np.full(trace_shapes, np.nan)
-
-    if indPupil == 0 and (len(pupil_trace) > 0) & (pupilQuality > 0.75):
-        indPupil = 1  # Update for subsequent recordings
-    pupilID.extend([int((len(pupil_trace) > 0) & (pupilQuality > 0.75))] * len_cellID)
-
+    
+    def get_trace_or_nan(key):
+        if key in pupil_trace and pupilQuality > 0.75:
+            trace = pupil_trace[key]
+            # Force shape (240,) for each trial
+            trace = np.array(trace).squeeze()
+            if trace.shape != (240,):
+                print(f"Warning: trace shape {trace.shape} for key {key} is not (240,), filling NaNs")
+                return np.full(trace_shape, np.nan)
+            return np.tile(trace.reshape(1, 240), (len_cellID, 1))
+        else:
+            return np.full(trace_shape, np.nan)
+        
     # Fetch or fake traces
-    new_traceBoth = get_or_fake('Both')
-    new_traceVis = get_or_fake('onlyVis')
-    new_traceOpto = get_or_fake('onlyOpto')
+    new_traceBoth = get_trace_or_nan('Both')
+    new_traceVis = get_trace_or_nan('onlyVis')
+    new_traceOpto = get_trace_or_nan('onlyOpto')
 
     # Update existing traces or set new ones
-    pupil_traceBoth = new_traceBoth if indPupil == 0 else np.vstack((pupil_traceBoth, new_traceBoth))
-    pupil_traceVis = new_traceVis if indPupil == 0 else np.vstack((pupil_traceVis, new_traceVis))
-    pupil_traceOpto = new_traceOpto if indPupil == 0 else np.vstack((pupil_traceOpto, new_traceOpto))
+    pupilID.extend([int((len(pupil_trace) > 0) & (pupilQuality > 0.75))]  * new_traceBoth.shape[0])
+    if indPupil == 0:
+        pupil_traceBoth = new_traceBoth
+        pupil_traceVis = new_traceVis
+        pupil_traceOpto = new_traceOpto
+        indPupil = 1
+    else:
+        pupil_traceBoth = np.vstack((pupil_traceBoth, new_traceBoth))
+        pupil_traceVis = np.vstack((pupil_traceVis, new_traceVis))
+        pupil_traceOpto = np.vstack((pupil_traceOpto, new_traceOpto))
+
+    # Final safety check
+    assert pupil_traceBoth.shape[0] == len(pupilID), f"Trace size: {pupil_traceBoth.shape[0]}, pupilID: {len(pupilID)}"
 
     return indPupil, pupilID, pupil_traceBoth, pupil_traceVis, pupil_traceOpto
 
@@ -271,18 +287,21 @@ def tiff_metadata(folderTIFF):
     return image_dims, tseries_nframes
 
 def getIndexForInterestedcellsID ( s_recDate, s_animalID, s_recID, s_cellID ):
-    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'    
+    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysisTH-readyForSelectingInterestedCells.pkl'    
     animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto,dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath) 
     ind = np.where((np.array(animalID) == s_animalID) & (np.array(recID) == s_recID) & (np.array(cellID) == s_cellID) & (np.array(recData) == s_recDate))
     return ind
 
 def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = False, pupil = True ):
-    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'    
+    if aGroup == 'Th':
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysisTH-readyForSelectingInterestedCells.pkl'    
+    else:
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'
     animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto, dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath) 
     animalID = np.where(animalID == 23040, 2304, animalID) # typo in animal ID
     #animalID = np.where(animalID == 22104, 22105, animalID) # typo in animal ID ( 22104 & 22105 is same animal)
-    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForPlotting_normalisedtoPre.pkl'
-    dff_traceBoth, dff_traceVis, dff_traceOpto = pd.read_pickle(infoPath) 
+    #infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForPlotting_normalisedtoPre.pkl'
+    #dff_traceBoth, dff_traceVis, dff_traceOpto = pd.read_pickle(infoPath) 
     Chrimson_animals = [ 21104, 21107, 21108, 21109,22101,22102,22103,22105,22106,22107,22108, 2303, 2304]
     NAAP_animals    = [21101, 21102, 21103, 21105, 21106]  
     control_animals = [23040, 23036, 23037]
@@ -304,6 +323,9 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
     elif aGroup == 'OPN3':
         s = set(OPN_animals)
         selectedAnimals = np.array([i in s for i in animalID])
+    elif aGroup == 'Th': # additional experiment
+        s = set([25000])
+        selectedAnimals = np.array([i in s for i in animalID])
     else:
         s =set([aGroup])
         selectedAnimals = np.array([i in s for i in animalID])
@@ -314,7 +336,7 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         s = set(includeType)
         selectedFamilarity = np.array([i in s for i in stimuliFamilarity])
     elif stimType  == 'Naive':
-        includeType = [0, 1, 8]
+        includeType = [0, 1, 8]# add 21 for thalamus data
         s = set(includeType)
         selectedFamilarity = np.array([i in s for i in stimuliFamilarity])
     elif stimType  == 'Pupil-control-coveredMicroscope':
@@ -412,6 +434,9 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
             print('Both - EXC opto responsive: '+ str(np.sum(excOnlyB)/np.sum(responsiveOnlyBoth)))
             print('Both - INH opto responsive: '+ str(np.sum(inhOnlyB)/np.sum(responsiveOnlyBoth)))
 
+            responsiveToAll = responsiveVis & responsiveOpto & responsiveBoth
+            print('All - responsive to all cells: '+ str(np.sum(responsiveToAll)))
+
         else:
             # visual cue responsive cells
             excDff = (np.array(dff_meanVisValue)> 0)
@@ -444,6 +469,25 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         selectedCellIndex = responsiveOnlyBoth
         excOnly = excOnlyB
         inhOnly = inhOnlyB
+    elif responsive == 'Sensory + Opto':
+        selectedCellIndex = responsiveVis & responsiveOpto & responsiveNoBoth
+        excOnly = excDff & selectedCellIndex
+        inhOnly = inhDff & selectedCellIndex
+
+    elif responsive == 'Sensory + Opto + Opto-boosted':
+        selectedCellIndex = responsiveVis & responsiveOpto & responsiveBoth
+        excOnly = excDff & selectedCellIndex
+        inhOnly = inhDff & selectedCellIndex
+
+    elif responsive == 'Sensory + Opto-boosted':
+        selectedCellIndex = responsiveVis & ~responsiveOpto & responsiveBoth
+        excOnly = excDff & selectedCellIndex
+        inhOnly = inhDff & selectedCellIndex
+
+    elif responsive == 'Opto + Opto-boosted':
+        selectedCellIndex = ~responsiveVis & responsiveOpto & responsiveBoth
+        excOnly = excDff & selectedCellIndex
+        inhOnly = inhDff & selectedCellIndex
 
     elif responsive =='All':
         selectedCellIndex = responsiveAll
@@ -454,6 +498,9 @@ def selectInterestedcells ( aGroup, stimType, responsive = True, plotValues = Fa
         selectedCellIndex = nonResponsiveAll
         excOnly = nonResponsiveAll
         inhOnly = nonResponsiveAll
+    
+    elif responsive==False:
+        selectedCellIndex = selectedExpGroup
     else:
         selectedCellIndex = 'Select responsive type'
 
@@ -610,7 +657,53 @@ def mean_cross_correlation(flu, frames):
 
     return np.array(trial_corr)
 
+def calculate_per_cell_dtw(flu, frames):
+    '''
+    Calculates the average DTW distance between the responses of each pair of trials, per cell
 
+    Parameters
+    ----------
+    flu : fluoresence array [n_cells x n_frames  x n_trials ]
+    frames : indexing array, frames across which to compute correlation
+
+    Returns
+    -------
+    dtw_distances_per_cell : array of len n_cells -> average DTW distance for each cell
+    '''
+    
+    n_trials = flu.shape[2]
+    n_cells = flu.shape[0]
+    dtw_distances_per_cell = np.zeros(n_cells)
+
+    for cell in range(n_cells):
+        sys.stdout.write(f'\r cell ID: {cell}')
+        sys.stdout.flush() 
+        distances = []
+        for i in range(n_trials):
+            for j in range(i + 1, n_trials):
+                response_i = flu[cell, frames,i]
+                response_j = flu[cell, frames,j]
+                distance, _ = fastdtw(response_i, response_j, dist=euclidean)
+                distances.append(distance)
+        avg_distance = np.mean(distances)
+        dtw_distances_per_cell[cell] = avg_distance
+
+    return np.array(dtw_distances_per_cell)
+
+def remove_outliers_iqr(df, group_col, value_col):
+    cleaned_df = pd.DataFrame()
+
+    for group, group_df in df.groupby(group_col):
+        Q1 = group_df[value_col].quantile(0.25)
+        Q3 = group_df[value_col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower = Q1 - 1.5 * IQR
+        upper = Q3 + 1.5 * IQR
+
+        group_cleaned = group_df[(group_df[value_col] >= lower) & (group_df[value_col] <= upper)]
+        cleaned_df = pd.concat([cleaned_df, group_cleaned])
+
+    return cleaned_df
 ## END
 # def run_suite2p (self, data_path, filename): # Not tested - 05/03/2022 HA
 #     from suite2p.run_s2p import run_s2p

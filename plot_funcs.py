@@ -71,6 +71,9 @@ def plot_cell_trace(ax, analysispath,tTypes, s_recDate, s_animalID, s_recID, s_c
 
     # ax.axis('off')
     ax.legend(fontsize=9, frameon=False)
+    # cut at 3 sec
+    ax.set_xlim(-1, 3)
+    # ax.set_xlabel('Time (sec)')
     # current_lines = plt.gca().get_lines()
     # for line in current_lines:
     #     line.set_linewidth(0.5)  # Adjust the value as needed
@@ -212,10 +215,10 @@ def lineplot_withSEM (data, colorInd, label, axis=None):
    # axis.set_ylim(ylim_min, ylim_max)
     
 def save_figure(name, base_path):
-    plt.savefig(os.path.join(base_path, f'{name}.png'), 
+    plt.savefig(os.path.join(base_path, f'{name}.png'),
                 bbox_inches='tight', transparent=False, dpi = 300)
-   # plt.savefig(os.path.join(base_path, f'{name}.svg'), 
-   #             bbox_inches='tight', transparent=True)
+    plt.savefig(os.path.join(base_path, f'{name}.svg'), 
+               bbox_inches='tight', transparent=True)
 
 def set_analysisParams ():
     #parameters
@@ -263,14 +266,17 @@ def lineplot_withSEMWithParams (data, colorInd, label, params, axis=None):
     axis.set_ylabel('DFF')
 
 def createTrialvsTraceMatrix (stimType, sortType=None, cohort = None, 
-                              trainedLevel=None, condition=None ):# Chrimson, Naive, Visual
+                              trainedLevel=None, condition=None, recID_info = False ):# Chrimson, Naive, Visual
     # HA, 25/01/2024
 
     # Set params
     pre_frames, post_frames, analysis_time, simulationDur = set_analysisParams ()
 
     # Load data
-    infoPath = r'C:\Users\Huriye\Documents\code\clapfcstimulation\analysis\infoForAnalysis-readyForPlotting_normalisedtoPre.pkl'
+    if cohort == 'Th':
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysisTH-readyForPlotting_normalisedtoPre.pkl'    
+    else:
+        infoPath = r'C:\Users\Huriye\Documents\code\clapfcstimulation\analysis\infoForAnalysis-readyForPlotting_normalisedtoPre.pkl'
     dff_traceBoth, dff_traceVis, dff_traceOpto  = pd.read_pickle(infoPath)
 
     # Select responsive cells for the interested co
@@ -278,7 +284,10 @@ def createTrialvsTraceMatrix (stimType, sortType=None, cohort = None,
                                                   plotValues = False, pupil = False ) # Chrimson, Naive, Visual
     
     # Get the animal ID for each responsive cell
-    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl' 
+    if cohort == 'Th':
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysisTH-readyForSelectingInterestedCells.pkl'    
+    else:
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'
     animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto,dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath)    
 
     # load data
@@ -286,7 +295,7 @@ def createTrialvsTraceMatrix (stimType, sortType=None, cohort = None,
     dff_traces = [dff_trace_dict[stim] for stim in stimType]
 
     plotDatas = []
-    animalLists = []
+    animalLists, recIDLists = [],[]
 
     for dff_trace in dff_traces:
         if sortType:
@@ -296,6 +305,8 @@ def createTrialvsTraceMatrix (stimType, sortType=None, cohort = None,
                 plotData = dff_trace[responsiveCells][sortedInd]
                 sorted_animalList = np.array([animalID[i] for i, responsive in enumerate(responsiveCells) if responsive])
                 sorted_animalList = sorted_animalList[sortedInd]
+                sorted_recID = np.array([recID[i] for i, responsive in enumerate(responsiveCells) if responsive])
+                sorted_recID = sorted_recID[sortedInd]
             else:
                 print('sortType is not defined in data dictionary')
                 plotData = dff_trace[responsiveCells]
@@ -307,21 +318,29 @@ def createTrialvsTraceMatrix (stimType, sortType=None, cohort = None,
 
         plotDatas.append(plotData)
         animalLists.append(sorted_animalList)
+        recIDLists.append(sorted_recID)
 
-    return [plotDatas,animalLists[0]] if len(plotDatas) > 1 else [plotDatas[0],animalLists[0]]
+    if recID_info:
+         return [plotDatas,animalLists, recIDLists] if len(plotDatas) > 1 else [plotDatas[0],animalLists[0], recIDLists[0]]
+    else:
+        return [plotDatas,animalLists[0]] if len(plotDatas) > 1 else [plotDatas[0],animalLists[0]]
+
 
 def get_moreStatsValues(labels, cohort=None, trainedLevel=None, condition=None, perAnimal=False):
     # HA, 01/02/2024
     responsiveCells = mfun.selectInterestedcells(cohort, trainedLevel, responsive=condition, plotValues=False, pupil=False)
-    infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForPlotting_moreStats.pkl'
-    variance_dict_pre, variance_dict_post, snr_dict, mi_dict, crosscorr_dict_pre, crosscorr_dict_post, abs_dict = pd.read_pickle(infoPath)
+    if cohort == 'Th':
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysisTH-readyForPlotting_moreStats.pkl'    
+    else:
+        infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForPlotting_moreStats.pkl'
+    variance_dict_pre, variance_dict_post, snr_dict, mi_dict, crosscorr_dict_pre, crosscorr_dict_post, abs_dict, dtw_dict = pd.read_pickle(infoPath)
     comparison_mapping = {
         'Visual': ('onlyVis',),
         'Opto': ('onlyOpto',),
         'Visual + Opto': ('Both',)
     }
 
-    datasets, snrs, mis, abs = [], [], [], []
+    datasets, snrs, mis, abs, dtw = [], [], [], [], []
     for label in labels:
         key = comparison_mapping.get(label)[0]
         variancePre, variancePost = map(np.array, [crosscorr_dict_pre[key], crosscorr_dict_post[key]])
@@ -329,19 +348,21 @@ def get_moreStatsValues(labels, cohort=None, trainedLevel=None, condition=None, 
         snrs.append(np.array(snr_dict[key]))
         mis.append(np.array(mi_dict[key]))
         abs.append(np.array(abs_dict[key]))
+        dtw.append(np.array(dtw_dict[key]))
+
 
     cv_values = [{'Condition': label, 'value': value} for label, dataset in zip(labels, datasets) for value in dataset[responsiveCells]]
     snr_values = [{'Condition': label, 'value': value} for label, snr in zip(labels, snrs) for value in snr[responsiveCells]]
     mi_values = [{'Condition': label, 'value': value} for label, mi in zip(labels, mis) for value in mi[responsiveCells]]
     abs_values = [{'Condition': label, 'value': value} for label, ab in zip(labels, abs) for value in ab[responsiveCells]]
-
+    dtw_values = [{'Condition': label, 'value': value} for label, dt in zip(labels, dtw) for value in dt[responsiveCells]]
     if perAnimal == True:
         infoPath = 'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\infoForAnalysis-readyForSelectingInterestedCells.pkl'    
         animalID, stimuliFamilarity, dataQuality,recData, recID, cellID, pvalsBoth, pvalsVis, pvalsOpto,dff_meanVisValue, dff_meanBothValue, dff_meanOptoValue, pupilID = pd.read_pickle(infoPath) 
         animalList = [animalID[i] for i in range(len(animalID)) if responsiveCells[i]]
         return cv_values, snr_values, mi_values, abs_values, animalList
     else:
-        return cv_values, snr_values, mi_values,abs_values
+        return cv_values, snr_values, mi_values,abs_values, dtw_values
 
 def heatmap_comparison(compare1, compare2, sortType=None, cohort = None, 
                        trainedLevel=None, condition=None, colormapSelection = None,
@@ -360,6 +381,7 @@ def heatmap_comparison(compare1, compare2, sortType=None, cohort = None,
     colormap = None if colormapSelection == 'none' else None if compare1 == 'Visual' else 'viridis' if compare1 == 'Opto' else 'seagreen'
 
     # Plot heatmap for each condition ( compare1, compare2, compare1 - compare2)
+
     for i, (plotData, title) in enumerate(zip([plotData1, plotData2, plotData2 - plotData1],
                                               [compare1, compare2, 'Opto modulation'])):
         ax = plt.subplot(1, 3, i+1) if axis is None else axis[i]
@@ -426,11 +448,11 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
 
     plot_dataVmean = data_means[0] # np.nanmean(plotData1 [:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis = 1)
     plot_dataBmean = data_means[1] # np.nanmean(plotData2 [:, pre_frames:(pre_frames + simulationDur + analysis_time)], axis = 1)
-    stat, p_value = stats.ks_2samp(plot_dataVmean, plot_dataBmean)
-    print('Stats for ' + condition)
-    print(f'KS test for {compare1} and {compare2} is {stat} and p: {p_value*len(data_means[0])}') # Correct for the number of observation
+#    stat, p_value = stats.ks_2samp(plot_dataVmean, plot_dataBmean)
+ #   print('Stats for ' + condition)
+  #  print(f'KS test for {compare1} and {compare2} t stat = {stat}; p: {p_value*len(data_means[0])}') # Correct for the number of observation
     ###### Subplot 3: Absolute magnitude 
-    cv_values, snr_values, mi_values, abs_values = get_moreStatsValues([compare1, compare2], cohort = cohort ,trainedLevel=trainedLevel, condition=condition)
+    cv_values, snr_values, mi_values, abs_values, dtw_values = get_moreStatsValues([compare1, compare2], cohort = cohort ,trainedLevel=trainedLevel, condition=condition)
     
     ax2 = axisAll[2]
     abs_df = pd.DataFrame(abs_values)
@@ -457,7 +479,7 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
     stat, p_value = stats.wilcoxon(data_df[data_df['Condition'] == 'Visual']['value'],
                                     data_df[data_df['Condition'] == 'Visual + Opto']['value'])
     
-    print(p_value)
+    print('CV p=' + str(p_value))
     y_max = data_df.groupby('Condition')['value'].quantile(0.75).max() + (data_df.groupby('Condition')['value'].quantile(0.75) - data_df.groupby('Condition')['value'].quantile(0.25)).max() * 1.5
     y_min = 0#data_df.groupby('Condition')['value'].quantile(0.25).min() - (data_df.groupby('Condition')['value'].quantile(0.25) - data_df.groupby('Condition')['value'].quantile(0.25)).min() * 1.5
 
@@ -466,7 +488,29 @@ def population_plots(compare1, compare2, sortType=None, cohort = None,
                          xy=(0.5, y_max*1.05), ha='center', color='black')
     ax8.set_ylim(y_min*1.2, y_max*1.2)
 
-    ###### Subplot 5: Cross correlation differences between two conditions
+    ###### Subplot 5: DTW: Time correlation differences
+    ax8 = axisAll[4]
+    plotParams['faceColors'][0] = 'grey'
+    data_df = pd.DataFrame(dtw_values)
+    filtered_df = mfun.remove_outliers_iqr(data_df, group_col="Condition", value_col="value")
+    sns.violinplot(data=filtered_df, x="Condition", y="value", palette=plotParams['faceColors'], ax=ax8)
+    ax8.set_ylabel ('DTW')
+    stat, p_value = stats.wilcoxon(data_df[data_df['Condition'] == 'Visual']['value'],
+                                    data_df[data_df['Condition'] == 'Visual + Opto']['value'])
+    
+    print('DTW p=' + str(p_value))
+    y_max = 85 #data_df.groupby('Condition')['value'].quantile(0.75).max() + (data_df.groupby('Condition')['value'].quantile(0.75) - data_df.groupby('Condition')['value'].quantile(0.25)).max() * 1.5
+    y_min = 0#data_df.groupby('Condition')['value'].quantile(0.25).min() - (data_df.groupby('Condition')['value'].quantile(0.25) - data_df.groupby('Condition')['value'].quantile(0.25)).min() * 1.5
+
+    if p_value < 0.05:
+        ax8.annotate('p < {:.3f}'.format(max(p_value, 0.001), 3),
+                         xy=(0.5, y_max*1.05), ha='center', color='black')
+    else:
+        ax8.annotate('p = {:.3f}'.format(p_value, 3),
+                     xy=(0.5, y_max*1.05), ha='center', color='black')
+    ax8.set_ylim(-5, y_max )
+    # addd a line at y = 0
+    ax8.axhline(y=0, color='grey', linestyle='--', linewidth=0.5)
     
     # save figure
     if savefigname:
@@ -525,7 +569,7 @@ def plot_paramsDiffPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
                              savefigpath=None,ComparePlot = False):
     # HA, 01/02/2024
     colorpalet = [ 'red', 'green', 'blue', 'grey'] #'black',
-    xlabel =  ['Sensory', 'Opto-boosted', 'Opto', 'None']#, 'All', 'Not responsive']
+    xlabel =  ['Sensory', 'Opto-boosted', 'Opto', 'None', 'All']# 'Not responsive']
 
     # Create an empty DataFrame to store all differences
     diff_df = pd.DataFrame()
@@ -669,7 +713,7 @@ def plot_paramsDiffPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
         ax.legend().set_visible(False)
    
     ax.set_ylim(y_min, y_max*1.2)
-    ax.set_xlim(-0.5, 2.5)
+    #ax.set_xlim(-0.5, 2.5)
     ax.axhline(0, color='grey', linestyle='--')
     ax.tick_params(axis='x', labelsize='x-small') # You can specify a numerical value instead of 'small'
     ax.set_ylabel(ylabel)
@@ -699,6 +743,11 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
     elif params == 'Opto-boosted':
         cellresponsivenessList = ['Opto-boosted']
         faceColors = palette2[4]
+    elif params == 'AllExtended':
+        cellresponsivenessList = ['None', 'All', 'Sensory', 'Opto', 'Opto-boosted', 'Sensory + Opto', 'Sensory + Opto + Opto-boosted', 'Sensory + Opto-boosted', 'Opto + Opto-boosted']
+        colorpalet = ['lightgrey', 'black', 'red', 'blue', 'green', 'purple', 'darkorange', 'magenta', 'cyan']
+        xlabel = ['None', 'All', 'Sensory', 'Opto', 'Opto-boosted', 'Sensory + Opto', 'Sensory + Opto + Opto-boosted', 'Sensory + Opto-boosted', 'Opto + Opto-boosted']
+
 
     # Create an empty DataFrame to store all differences
     diff_df = pd.DataFrame()
@@ -720,8 +769,8 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
                         'Type' : tLevel,
                         'Condition': [xlabel[idx]],
                         'All': output['all'],
-                        'Act': output['EXC'],
-                        'Sup': output['INH'],
+                        'Exc': output['EXC'],
+                        'Inh': output['INH'],
                     })
                     diff_df = pd.concat([diff_df, temp_df], ignore_index=True)
     
@@ -732,33 +781,34 @@ def plot_cellRatiosPerAnimal(params, cohorts, trainedLevel, ax=None, savefigname
         ax.set_xlabel('Neural population based on responsiveness')
 
     else:
-        if params== 'All':
-            sns.violinplot(data=diff_df, x='Condition', y=params,palette= colorpalet, width = 1.5, ax = ax)
+        if params== 'All' or params == 'AllExtended':
+            sns.violinplot(data=diff_df, x='Condition',y = 'All' , palette= colorpalet, width = 1.2, ax = ax)
             ax.set_ylabel('Percentage of neurons (%)')
             ax.set_xlabel('Neural population based on responsiveness')
             ax.legend().set_visible(False)
-            ax.set_xlim(-0.5, len(cellresponsivenessList)+0.3)
-            ax.set_ylim(0,90)
+            ax.set_xlim(-1, len(cellresponsivenessList)+0.2)
+            ax.set_ylim(0,100)
         else:
-            ax.axhline(y = 50, color ='grey', linestyle = '--', linewidth = 0.2)
-            sns.violinplot(x = 'variable', y='value', data=diff_df.melt(value_vars=['Act', 'Sup']), 
+            ax.axhline(y = 50, color ='grey', linestyle = '--', linewidth = 1)
+            sns.violinplot(x = 'variable', y='value', data=diff_df.melt(value_vars=['Exc', 'Inh']), 
                         ax = ax, color = faceColors, width=0.4)
-            statVal, pval = stats.wilcoxon(diff_df['Act'], diff_df['Sup'])
+            statVal, pval = stats.wilcoxon(diff_df['Exc'], diff_df['Inh'])
             print(params + ': p ='+ str(pval) + ' Wilcoxon: ' + str(statVal))
             
             if pval<0.05:
                 ax.annotate('p = {:.3f}'.format(max(pval, 0.001), 3),xy=(0.5, 90 ), 
                             ha = 'center', fontsize = 10)
             else:
-                ax.annotate('n.s.',xy=(0.5, 90 ), 
+                ax.annotate('n.s.',xy=(0.5, 95 ), 
                             ha = 'center', fontsize = 10)
-            ax.set_xticklabels(['Act', 'Sup'])  # Set custom x-labels
+            ax.set_xticklabels(['Exc', 'Inh'])  # Set custom x-labels
             ax.set_ylabel('% of neurons', fontsize = 10)
             ax.set_ylim(0,100)
             ax.set_xlabel('')
     # save figure
     if savefigname:
         save_figure(savefigname, savefigpath)
+    return diff_df  
 
 def plot_exampleTrainingBehaviour(s_animalID,duration, ax): 
     preStimDur = duration[0]
@@ -1383,7 +1433,7 @@ def plot_correlationMatrix(stimType,cohort, trainedLevel, responsiveness,
                            axs=None, savefigname=None, savefigpath=None):
     # Load data
     infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_{trainedLevel}_{responsiveness}.pkl'
-    linkage_matrices, correlation_matrices, animalID = pd.read_pickle(infoPath)
+    linkage_matrices, correlation_matrices, animalID, recID = pd.read_pickle(infoPath)
     # Create or use provided axes
     if axs is None:
         fig, axs = plt.subplots()
@@ -1396,9 +1446,17 @@ def plot_correlationMatrix(stimType,cohort, trainedLevel, responsiveness,
     #Z3, corr_matrix3 = linkage_matrices[2], correlation_matrices[2]
 
     # Sort correlation matrix
-    leaf_order = leaves_list(Z1)
-    sorted_corr_matrix = corr_matrix[np.ix_(leaf_order, leaf_order)]
-    sorted_corr_matrix2 = corr_matrix2[np.ix_(leaf_order, leaf_order)] # same order with Visual
+    subset = np.random.choice(corr_matrix.shape[0], size=20000, replace=False)
+    corr_subset = corr_matrix[np.ix_(subset, subset)]
+    corr_subset2 = corr_matrix2[np.ix_(subset, subset)]  # same order with Visual
+   # Recompute linkage on the subset
+    Z1_subset = linkage(corr_subset, method='average')  # or 'ward', 'complete', etc.
+
+# Get the sorted leaf order from this linkage
+    leaf_order = leaves_list(Z1_subset)
+
+    sorted_corr_matrix = corr_subset[np.ix_(leaf_order, leaf_order)]
+    sorted_corr_matrix2 = corr_subset2[np.ix_(leaf_order, leaf_order)] # same order with Visual
     cax = axs[0].imshow(sorted_corr_matrix, interpolation='nearest', cmap='coolwarm', aspect='auto')
     cax = axs[1].imshow(sorted_corr_matrix2, interpolation='nearest', cmap='coolwarm', aspect='auto')
     fig.colorbar(cax, ax=axs, label='Cross-Correlation')
@@ -1415,79 +1473,6 @@ def plot_correlationMatrix(stimType,cohort, trainedLevel, responsiveness,
     # Save figure if requested
     if savefigname and savefigpath:
         plt.savefig(f"{savefigpath}\\{savefigname}_{stimType}_CorrelationMatrix.png")
-
-def plot_correlationMatrix_meanChangeDELETE(stimType,cohort, trainedLevel, responsiveness, params, 
-                           axs=None, savefigname=None, savefigpath=None):
-    if params == 'All':
-        cellresponsivenessList = ['All','None']
-        colorpalet = ['grey', 'black'] 
-    else:
-        print('StimType order is not matched with colors')
-        cellresponsivenessList = ['Visual', 'Visual + Opto', 'Opto','All']
-        palette1 = sns.color_palette('cividis') # for OPTO - blue
-        palette2 = sns.color_palette('viridis') # for BOTH - green
-        colorpalet = ['red',palette2[4], palette1[0] , 'grey'] # all, visual, opto, both
-        xlabel =   ['Visual','Opto-boosted','Opto','All']
-
-
-    # Initialize a dictionary to hold average changes for each animal across conditions
-    average_changes = {condition: [] for condition in responsiveness}
-    for condition in responsiveness:
-        # Load data for this condition
-        infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_{trainedLevel}_{condition}.pkl'
-
-        #Z,Z2,Z3,corr_matrix,corr_matrix2,corr_matrix3 = pd.read_pickle(infoPath)
-        linkage_matrices, correlation_matrices, animalID = pd.read_pickle(infoPath)
-            # Select data based on stimType
-        if stimType[0] == 'Visual':
-            Z, corr_matrix = linkage_matrices[0], correlation_matrices[0]
-        elif stimType[0] == 'Opto':
-            Z, corr_matrix = linkage_matrices[1], correlation_matrices[1]
-        elif stimType[0] == 'Visual + Opto':
-            Z, corr_matrix = linkage_matrices[2], correlation_matrices[2]
-        else:
-            raise ValueError(f"Unknown stimType: {stimType[0]}")
-        
-        if stimType[1] == 'Visual':
-            Z, corr_matrix2 = linkage_matrices[0], correlation_matrices[0]
-        elif stimType[1] == 'Visual + Opto':
-            Z, corr_matrix2 = linkage_matrices[1], correlation_matrices[1]
-        else:
-            raise ValueError(f"Unknown stimType: {stimType[1]}")
-        
-        change_matrix = corr_matrix2 - corr_matrix
-    # Calculate average change for each matrix (includes all cells from all animal) and store
-        animalID = animalID[:int(len(animalID)/len(correlation_matrices))]
-        animalList = np.unique(animalID)
-       # print(animalList)
-        for animal_id in animalList:
-            # Extract the correlation matrix for this animal
-            animal_indices = animalID == animal_id
-            corr_matrix = correlation_matrices[0][animal_indices]
-            corr_matrix2 = correlation_matrices[1][animal_indices]
-            change_matrix = corr_matrix2 - corr_matrix
-
-            # Calculate the average change in correlation for this animal
-            rows, cols = np.tril_indices(change_matrix.shape[0], -1)
-            lower_triangle = change_matrix[rows, cols] # Extract the lower triangular part of the matrix
-            average_abs_value = np.nanmean(np.abs(lower_triangle)) # Calculate the average of the absolute values
-            average_changes[condition].append(average_abs_value) # Store the average change
-
-    # Convert average_changes to a DataFrame for easier plotting
-    average_changes_df = pd.DataFrame.from_dict(average_changes, orient='index').transpose()
-    # Plotting the results
-    
-    sns.swarmplot(data=average_changes_df, ax=axs)
-    #axs.set_title('Average Change in Correlation for Different Responsiveness Categories')
-    axs.set_ylabel('Total average change')
-    #axs.set_xlabel('Neural Population Based on Responsiveness')
-    axs.set_xticklabels(responsiveness)#, rotation=45)
-    axs.set_ylim(0, 0.35)
-
-    # Save figure if requested
-    if savefigname and savefigpath:
-        plt.savefig(f"{savefigpath}\\{savefigname}_{stimType}_CorrelationMatrixMean.png")
-    return average_changes_df
 
 def plot_correlationMatrix_meanChange(compareType,cohort, responsiveness, params, 
                            axs=None, savefigname=None, savefigpath=None):
@@ -1510,7 +1495,7 @@ def plot_correlationMatrix_meanChange(compareType,cohort, responsiveness, params
     else:
         infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_Naive_All.pkl'
     data = pd.read_pickle(infoPath) 
-    _, correlation_matrices, animalID = data
+    _, correlation_matrices, animalID, recID = data
     animalID = animalID[:int(len(animalID)/len(correlation_matrices))]
     animalList = np.unique(animalID)
     data_list = []
@@ -1522,7 +1507,7 @@ def plot_correlationMatrix_meanChange(compareType,cohort, responsiveness, params
             data = pd.read_pickle(infoPath) 
             
             # Extract data based on index - HARD CODE: Visual - Visual+Opto
-            linkage_matrices, correlation_matrices, animalID = data
+            linkage_matrices, correlation_matrices, animalID, recID= data
             animalID = animalID[:int(len(animalID)/len(correlation_matrices))]
             change_matrix = correlation_matrices[0] - correlation_matrices[1]
 
@@ -1551,8 +1536,103 @@ def plot_correlationMatrix_meanChange(compareType,cohort, responsiveness, params
     
     axs.set_ylabel('Average Change in Correlation')
     axs.set_xlabel('Condition')
-    axs.legend(loc = 'lower right', fontsize = 10, frameon = False)
+    axs.legend([], [], frameon=False)  
     axs.set_ylim(0, 0.45)
+
+    # Optionally save the figure
+    if savefigname and savefigpath:
+        plt.savefig(f"{savefigpath}/{savefigname}")
+
+def plot_correlationMatrix_meanChangeFOV(compareType,cohort, responsiveness, params, 
+                           axs=None, savefigname=None, savefigpath=None):
+    if params == 'All':
+        cellresponsivenessList = ['All','None']
+        colorpalet = [ 'black', 'magenta']
+    else:
+        print('StimType order is not matched with colors')
+        cellresponsivenessList = ['Visual', 'Visual + Opto', 'Opto','All']
+        palette1 = sns.color_palette('cividis') # for OPTO - blue
+        palette2 = sns.color_palette('viridis') # for BOTH - green
+        colorpalet = ['red',palette2[4], palette1[0] , 'grey'] # all, visual, opto, both
+        xlabel =   ['Visual','Opto-boosted','Opto','All']
+
+
+    # Initialize a dictionary to hold average changes for each animal across conditions
+    #if in compareType Train 
+    if 'Trained' in compareType:
+        infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_Trained_All.pkl'
+    else:
+        infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_Naive_All.pkl'
+    data = pd.read_pickle(infoPath) 
+    _, correlation_matrices, animalID, recID = data
+    recID_str = [str(r) for r in recID]
+    combined_ids = np.array([f"{animal}_rec{rec}" for animal, rec in zip(animalID, recID_str)])
+    # get first half
+    combined_ids = combined_ids[::2]
+    combined_list = np.unique(combined_ids)
+    print('Total number of FOV:', len(combined_list))
+    data_list = []
+
+    # Process both Trained and Naive data
+    for condition in responsiveness:
+        for group in compareType:
+            infoPath = f'C:\\Users\\Huriye\\Documents\\code\\clapfcstimulation\\analysis\\crossCorrelation_{cohort}_{group}_{condition}.pkl'
+            data = pd.read_pickle(infoPath) 
+            
+            # Extract data based on index - HARD CODE: Visual+ Opto &  Visual+Opto
+            linkage_matrices, correlation_matrices, animalID, recID= data
+            change_matrix = correlation_matrices[1] - correlation_matrices[0]
+
+            # Calculate average change for each animal
+            for animal_idRec in combined_list:
+                indices = np.where(combined_ids == animal_idRec)[0]
+                # Safety check
+                if len(indices) < 2:
+                    continue
+                if np.any(indices >= change_matrix.shape[0]):
+                    print(f"Skipping {animal_idRec}: index out of bounds")
+                    continue
+
+                matrix_subset = change_matrix[np.ix_(indices, indices)]
+                lower_triangle = np.tril_indices_from(matrix_subset, -1)
+                average_abs_value1 = np.nanmean(np.abs(correlation_matrices[1][lower_triangle]))
+                average_abs_value2 = np.nanmean(np.abs(correlation_matrices[0][lower_triangle]))
+
+                
+                data_list.append({
+                    'Condition': condition,
+                    'Group': group,
+                    'Visual': average_abs_value1,
+                    'Visual + Opto': average_abs_value2,
+                })
+
+    # Convert list to DataFrame
+    df = pd.DataFrame(data_list)
+
+    # Create figure if not provided
+    if axs is None:
+        fig, axs = plt.subplots(figsize=(12, 6))
+
+
+    # Melt the DataFrame to long format for seaborn plotting
+    df_melted = df.melt(id_vars=['Condition'], 
+                        value_vars=['Visual', 'Visual + Opto'],
+                        var_name='Stimulus', 
+                        value_name='Response')
+    df_melted['GroupLabel'] = df_melted['Condition'] + ' – ' + df_melted['Stimulus']
+    order = ['All – Visual', 'All – Visual + Opto', 'None – Visual', 'None – Visual + Opto']
+    df_melted['GroupLabel'] = pd.Categorical(df_melted['GroupLabel'], categories=order, ordered=True)
+
+
+    sns.violinplot(data=df_melted, x='GroupLabel', y='Response',
+                inner='quartile', linewidth=1, facecolor='black',
+                ax=axs, palette=colorpalet)
+
+    #axs.set_ylim(-0.01, 0.35)
+    #legend off
+    axs.set
+    axs.legend([], [], frameon=False)   
+
 
     # Optionally save the figure
     if savefigname and savefigpath:
@@ -1754,6 +1834,10 @@ def scatterModulationvsBaseFiring(compare1, compare2, sortType=None, cohort = No
                             'Opto modulation (DF/F)':  data_means[2]})
     sns.scatterplot (y = 'Visual (DF/F)', x = 'Opto modulation (DF/F)', data = plot_data, 
                      color='black', ax=ax, linewidth = 0.5, markers='.', s=7)
+    
+    #mask = ~np.isnan(data_means[0]) & ~np.isnan(data_means[2])
+    #correlation_coefficient, p_value = stats.pearsonr(np.array(data_means[0])[mask], np.array(data_means[2])[mask])
+
     correlation_coefficient, p_value = stats.pearsonr(data_means[0], data_means[2])
     print(f'Pearson correlation coefficient for {compare1} and {compare2} is {correlation_coefficient} and p: {p_value*len(data_means[0])} ')
 
