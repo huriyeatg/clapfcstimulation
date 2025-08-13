@@ -62,6 +62,7 @@ To reproduce the figures in the upcoming publication:
 1. Update the path in main_funcs.py
 2. Use the 'clapfcstimulation_master.ipynb' scripts after running the pipeline.
 3. Each figure script is labeled to correspond with specific figure panels (e.g., `fig1_activationAffect.ipynb`).
+4. Data will be available upon publication.
 
 ---
 
