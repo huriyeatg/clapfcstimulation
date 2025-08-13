@@ -14,6 +14,7 @@ This repository contains analysis code developed by **H. Atilgan** for studying 
 - Windows 10 (should be fine, limited testing)
 
 ### Required Software and Packages
+- **Python** (Main programming language, >3.9.16)
 - **MATLAB** (R2021a or later)
 - **R**
 - Signal Processing Toolbox
